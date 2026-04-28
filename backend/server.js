@@ -160,4 +160,8 @@ app.delete("/chat/:id", async (req, res) => {
   }
 });
 
+app.get("/", (req, res) => {
+  res.send("<h1>NEO-Z API is running smoothly 🚀</h1>");
+});
+
 app.listen(5000, () => console.log("Server running 🚀 on port 5000"));
