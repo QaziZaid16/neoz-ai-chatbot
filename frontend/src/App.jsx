@@ -28,7 +28,7 @@ function App() {
   useEffect(() => {
     const fetchChats = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/chats");
+        const res = await axios.get("https://neoz-ai-chatbot.onrender.com/");
         if (res.data.length > 0) {
           setChats(res.data);
           setActiveChatId(res.data[0]._id);
@@ -66,7 +66,7 @@ function App() {
       else createNewChat();
     }
     if (id !== "temp") {
-      try { await axios.delete(`http://localhost:5000/chat/${id}`); } catch (err) {}
+      try { await axios.delete(`https://neoz-ai-chatbot.onrender.com/chat/${id}`); } catch (err) {}
     }
   };
 
@@ -120,7 +120,7 @@ function App() {
     setIsTyping(true);
 
     try {
-      const res = await axios.post("http://localhost:5000/chat", { 
+      const res = await axios.post("https://neoz-ai-chatbot.onrender.com/chat", { 
         message: userMsg, 
         chatId: activeChatId === "temp" ? null : activeChatId,
         imageBase64: currentBase64,
