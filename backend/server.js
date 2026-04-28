@@ -71,6 +71,17 @@ app.get("/chats", async (req, res) => {
   }
 });
 
+// ✅ NEW: Single Chat fetch karne ka route (Share links ke liye)
+app.get("/chat/:id", async (req, res) => {
+  try {
+    const chat = await Chat.findById(req.params.id);
+    if (!chat) return res.status(404).json({ error: "Chat not found" });
+    res.json(chat);
+  } catch (err) {
+    res.status(500).json({ error: "Invalid Link" });
+  }
+});
+
 // 4. Main Chat Route (With Context & Vision)
 app.post("/chat", async (req, res) => {
   const { message, chatId, projectId, imageBase64, mimeType } = req.body;
