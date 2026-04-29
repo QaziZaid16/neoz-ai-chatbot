@@ -8,7 +8,7 @@ import {
   Bot, Code, Lightbulb, Paperclip, Mic, Send, Bookmark, Wrench, DollarSign, 
   HelpCircle, Plus, Trash2, Share2, X, Folder, FolderOpen, ChevronRight, LogOut, Mail, Lock, User,
   Copy, Check, MessageCircle, FileSpreadsheet, Usb, 
-  Palette, Code2, PenTool, LineChart // ✅ AGENTS KE NAYE ICONS
+  Palette, Code2, PenTool, LineChart 
 } from "lucide-react";
 
 const API_BASE_URL = "https://neoz-ai-chatbot.onrender.com";
@@ -18,12 +18,11 @@ if (initialToken) {
   axios.defaults.headers.common["Authorization"] = `Bearer ${initialToken}`;
 }
 
-// ✅ THE EXPERT SQUAD (Agents List)
 const EXPERT_AGENTS = [
-  { id: "developer", name: "Developer", icon: Code2, desc: "Code, logic & debugging", color: "text-blue-400", bg: "bg-blue-400/10" },
-  { id: "designer", name: "Designer", icon: Palette, desc: "UI/UX & aesthetics", color: "text-pink-400", bg: "bg-pink-400/10" },
-  { id: "writer", name: "Writer", icon: PenTool, desc: "Copywriting & emails", color: "text-green-400", bg: "bg-green-400/10" },
-  { id: "analyst", name: "Analyst", icon: LineChart, desc: "Data & CSV insights", color: "text-purple-400", bg: "bg-purple-400/10" },
+  { id: "developer", name: "Developer", icon: Code2, desc: "Logic / Architecture" },
+  { id: "designer", name: "Designer", icon: Palette, desc: "Aesthetics / UI" },
+  { id: "writer", name: "Writer", icon: PenTool, desc: "Copy / Narrative" },
+  { id: "analyst", name: "Analyst", icon: LineChart, desc: "Data / Metrics" },
 ];
 
 function App() {
@@ -42,6 +41,8 @@ function App() {
   const [isTyping, setIsTyping] = useState(false);
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
+  
+  // ✅ FIX: TOOLTIP STATE ADDED BACK
   const [tooltip, setTooltip] = useState({ show: false, text: "", top: 0, left: 0 });
   
   const urlParams = new URLSearchParams(window.location.search);
@@ -50,26 +51,23 @@ function App() {
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
-
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareLink, setShareLink] = useState("");
   const [isCopied, setIsCopied] = useState(false);
 
-  // FILES & HARDWARE STATE
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [mimeType, setMimeType] = useState(null);
   const [csvFile, setCsvFile] = useState(null); 
   const [hardwarePort, setHardwarePort] = useState(null); 
   
-  // ✅ AGENT MENU STATES
   const [showAgentMenu, setShowAgentMenu] = useState(false);
   const [agentSearch, setAgentSearch] = useState("");
 
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const csvInputRef = useRef(null);
-  const inputRef = useRef(null); // ✅ Focus wapas input pe laane ke liye
+  const inputRef = useRef(null); 
 
   const activeChat = chats.find(c => c._id === activeChatId) || chats.find(c => c._id === "temp") || null;
 
@@ -82,6 +80,7 @@ function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // ✅ FIX: TOOLTIP HANDLERS ADDED BACK
   const handleMouseEnter = (e, text) => {
     if (isSidebarOpen || window.innerWidth < 768) return; 
     const rect = e.currentTarget.getBoundingClientRect();
@@ -154,7 +153,7 @@ function App() {
           setProjects(projRes.data);
           const chatRes = await axios.get(`${API_BASE_URL}/chats`);
           const fetchedChats = chatRes.data || [];
-          const tempChat = { _id: "temp", title: "New Chat", projectId: null, messages: [] };
+          const tempChat = { _id: "temp", title: "Untitled Track", projectId: null, messages: [] };
           setChats([tempChat, ...fetchedChats]);
           setActiveChatId("temp");
         } catch (err) {
@@ -169,14 +168,11 @@ function App() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeChat?.messages, isTyping]);
 
-  // ✅ SMART INPUT HANDLER (Detects @ for Agent Menu)
   const handleMessageChange = (e) => {
     const val = e.target.value;
     setMessage(val);
-
     const words = val.split(" ");
     const lastWord = words[words.length - 1];
-
     if (lastWord.startsWith("@")) {
       setShowAgentMenu(true);
       setAgentSearch(lastWord.substring(1).toLowerCase());
@@ -185,12 +181,10 @@ function App() {
     }
   };
 
-  // ✅ INJECT AGENT INTO INPUT
   const handleSelectAgent = (agentName) => {
     const words = message.split(" ");
-    words.pop(); // Remove the incomplete @ search
+    words.pop(); 
     const newMessage = words.join(" ") + (words.length > 0 ? " " : "") + `@${agentName} `;
-    
     setMessage(newMessage);
     setShowAgentMenu(false);
     inputRef.current?.focus();
@@ -217,7 +211,7 @@ function App() {
 
   const createNewChat = (projectId = null) => {
     const filteredChats = chats.filter(c => c._id !== "temp"); 
-    const newChat = { _id: "temp", title: "New Chat", projectId: projectId, messages: [] };
+    const newChat = { _id: "temp", title: "Untitled Track", projectId: projectId, messages: [] };
     setChats([newChat, ...filteredChats]);
     selectChatMobileFriendly("temp");
     if(projectId) setActiveProjectId(projectId);
@@ -295,12 +289,12 @@ function App() {
         if (chat._id === activeChatId) {
           return {
             ...chat,
-            messages: [...chat.messages, { role: "bot", text: "⚡ **Hardware Link Established.** NEO-Z is now listening to the serial port." }]
+            messages: [...chat.messages, { role: "bot", text: "⚡ **HARDWARE PORT OPEN.** AWAITING SIGNAL." }]
           };
         }
         return chat;
       }));
-    } catch (err) { console.error("Connection Failed:", err); }
+    } catch (err) {}
   };
 
   const disconnectHardware = async () => {
@@ -320,7 +314,6 @@ function App() {
       payloadMsg = `[Data File Attached: ${csvFile.name}]\n\n\`\`\`json\n${csvFile.data}\n\`\`\`\n\nTask: ${baseMsg || "Analyze this data."}`;
     }
 
-    // ✅ MAGIC INVISIBLE PROMPT INJECTION (For Agents)
     const agentMatch = baseMsg.match(/@(Developer|Designer|Writer|Analyst)/i);
     if (agentMatch) {
         const agent = agentMatch[1];
@@ -332,12 +325,12 @@ function App() {
     const currentProjectId = activeChat?.projectId || null;
     
     setMessage("");
-    setShowAgentMenu(false); // Close menu if open
+    setShowAgentMenu(false); 
     clearAttachments(); 
 
     setChats(prevChats => prevChats.map(chat => {
       if (chat._id === activeChatId) {
-        const visualMsg = currentBase64 ? `[Image Attached] 🖼️\n${baseMsg}` : baseMsg; // Sirf clean message UI pe dikhega
+        const visualMsg = currentBase64 ? `[Image Attached] 🖼️\n${baseMsg}` : baseMsg; 
         return {
           ...chat,
           title: chat.messages.length === 0 ? (baseMsg.substring(0, 25) || "Data Analysis") : chat.title,
@@ -376,12 +369,11 @@ function App() {
            writer.releaseLock();
         }
       }
-
     } catch (err) {
       if(err.response?.status === 401) handleLogout(); 
       setChats(prevChats => prevChats.map(chat => {
         if (chat._id === activeChatId) {
-          return { ...chat, messages: [...chat.messages, { role: "bot", text: "⚠️ **Error:** Server connection failed." }] };
+          return { ...chat, messages: [...chat.messages, { role: "bot", text: "⚠️ **ERROR:** SIGNAL LOST." }] };
         }
         return chat;
       }));
@@ -393,44 +385,73 @@ function App() {
   const projectChats = chats.filter(c => c.projectId !== null && c._id !== "temp");
   const standaloneChats = chats.filter(c => c.projectId === null && c._id !== "temp");
 
+  const today = new Date();
+  const dateString = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
+
+  // ==========================================
+  // AUTHENTICATION SCREEN (DARKLANDS THEME)
+  // ==========================================
   if (!token && !isSharedView) {
     return (
-      <div className="min-h-screen w-screen bg-[#090A0F] text-[#EDEDED] flex items-center justify-center relative overflow-hidden px-4 py-8">
-        <div className="absolute top-[-30%] left-[-20%] w-[80vw] md:w-[60vw] h-[80vw] md:h-[60vw] bg-[#D4AF37]/5 blur-[100px] md:blur-[150px] rounded-full pointer-events-none"></div>
-        <div className="absolute bottom-[-30%] right-[-20%] w-[80vw] md:w-[60vw] h-[80vw] md:h-[60vw] bg-white/5 blur-[80px] md:blur-[120px] rounded-full pointer-events-none"></div>
-        <div className="bg-[#13151A]/60 backdrop-blur-3xl border border-white/5 p-8 md:p-12 rounded-[32px] md:rounded-[40px] w-full max-w-md shadow-2xl z-10">
-          <div className="flex flex-col items-center gap-4 mb-8 md:mb-10">
-            <div className="w-12 h-12 bg-gradient-to-br from-[#D4AF37] to-[#A88728] rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(212,175,55,0.2)]">
-              <div className="w-5 h-5 bg-[#090A0F] rounded-md rotate-45"></div>
-            </div>
-            <h2 className="text-white font-display font-bold text-3xl md:text-4xl tracking-tight">NEO-Z</h2>
+      <div className="min-h-screen w-screen bg-[#111111] text-[#E5E5E5] flex items-center justify-center relative overflow-hidden px-4 py-8 font-sans selection:bg-[#D31010] selection:text-white">
+        {/* Subtle noise/texture overlay */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-overlay" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")'}}></div>
+        
+        <div className="border border-[#333] bg-[#0A0A0A] p-8 md:p-12 w-full max-w-md relative z-10">
+          
+          <div className="absolute top-4 right-4 text-[#D31010] text-xl font-black tracking-widest leading-none">
+            X X
           </div>
-          <h3 className="text-center text-lg md:text-xl font-medium text-white mb-2">{authMode === "login" ? "Welcome Back" : "Request Access"}</h3>
-          <p className="text-center text-[#8B949E] text-xs md:text-sm mb-8">{authMode === "login" ? "Enter your credentials to continue." : "Join the intelligence network."}</p>
-          {authError && <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-xs md:text-sm mb-6 text-center font-medium">{authError}</div>}
+
+          <div className="flex flex-col mb-10 border-b border-[#333] pb-6">
+            <h2 className="text-[#D31010] font-black uppercase text-5xl tracking-tighter leading-none mb-2">NEO-Z.</h2>
+            <div className="flex justify-between text-[10px] text-gray-500 uppercase tracking-widest w-full">
+              <span>System Node.</span>
+              <span>{dateString}</span>
+            </div>
+          </div>
+
+          <h3 className="text-xl font-black text-white uppercase mb-2">
+            {authMode === "login" ? "ENTER THE DARKLANDS" : "INITIALIZE NODE"}
+          </h3>
+          <p className="text-gray-500 text-xs mb-8 font-medium uppercase tracking-widest">
+            {authMode === "login" ? "IDENTIFY YOURSELF." : "CREATE YOUR SIGNAL."}
+          </p>
+
+          {authError && (
+            <div className="bg-[#D31010] text-white p-3 text-xs mb-6 font-bold uppercase tracking-widest border border-red-900">
+              {authError}
+            </div>
+          )}
+
           <form onSubmit={handleAuthSubmit} className="space-y-4">
             {authMode === "signup" && (
-              <div className="relative">
-                <User size={18} strokeWidth={1.5} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8B949E]" />
-                <input type="text" required placeholder="Full Name" value={authForm.name} onChange={(e) => setAuthForm({...authForm, name: e.target.value})} className="w-full bg-[#090A0F]/50 border border-white/10 text-white pl-12 pr-4 py-3.5 md:py-4 rounded-2xl outline-none focus:border-[#D4AF37]/50 transition-colors placeholder:text-[#8B949E] text-sm md:text-base"/>
+              <div>
+                <label className="text-[10px] text-[#D31010] font-bold uppercase tracking-widest mb-1 block">Full Name.</label>
+                <input type="text" required value={authForm.name} onChange={(e) => setAuthForm({...authForm, name: e.target.value})} className="w-full bg-[#111] border border-[#333] text-white px-4 py-3 outline-none focus:border-[#D31010] transition-colors font-medium rounded-none"/>
               </div>
             )}
-            <div className="relative">
-              <Mail size={18} strokeWidth={1.5} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8B949E]" />
-              <input type="email" required placeholder="Email Address" value={authForm.email} onChange={(e) => setAuthForm({...authForm, email: e.target.value})} className="w-full bg-[#090A0F]/50 border border-white/10 text-white pl-12 pr-4 py-3.5 md:py-4 rounded-2xl outline-none focus:border-[#D4AF37]/50 transition-colors placeholder:text-[#8B949E] text-sm md:text-base"/>
+            <div>
+              <label className="text-[10px] text-[#D31010] font-bold uppercase tracking-widest mb-1 block">Email Address.</label>
+              <input type="email" required value={authForm.email} onChange={(e) => setAuthForm({...authForm, email: e.target.value})} className="w-full bg-[#111] border border-[#333] text-white px-4 py-3 outline-none focus:border-[#D31010] transition-colors font-medium rounded-none"/>
             </div>
-            <div className="relative">
-              <Lock size={18} strokeWidth={1.5} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8B949E]" />
-              <input type="password" required placeholder="Password" value={authForm.password} onChange={(e) => setAuthForm({...authForm, password: e.target.value})} className="w-full bg-[#090A0F]/50 border border-white/10 text-white pl-12 pr-4 py-3.5 md:py-4 rounded-2xl outline-none focus:border-[#D4AF37]/50 transition-colors placeholder:text-[#8B949E] text-sm md:text-base"/>
+            <div>
+              <label className="text-[10px] text-[#D31010] font-bold uppercase tracking-widest mb-1 block">Password.</label>
+              <input type="password" required value={authForm.password} onChange={(e) => setAuthForm({...authForm, password: e.target.value})} className="w-full bg-[#111] border border-[#333] text-white px-4 py-3 outline-none focus:border-[#D31010] transition-colors font-medium rounded-none"/>
             </div>
-            <button type="submit" disabled={isAuthLoading} className="w-full bg-gradient-to-r from-[#D4AF37] to-[#C5A028] text-[#090A0F] font-bold text-xs md:text-sm py-3.5 md:py-4 rounded-2xl mt-4 hover:opacity-90 hover:scale-[1.01] transition-all disabled:opacity-50 shadow-[0_4px_20px_rgba(212,175,55,0.2)]">
-              {isAuthLoading ? "PROCESSING..." : (authMode === "login" ? "ENTER WORKSPACE" : "CREATE ACCOUNT")}
+
+            <button type="submit" disabled={isAuthLoading} className="w-full bg-[#D31010] text-white font-black uppercase tracking-widest text-sm py-4 mt-6 hover:bg-white hover:text-black transition-all disabled:opacity-50">
+              {isAuthLoading ? "PROCESSING..." : (authMode === "login" ? "CONNECT" : "REGISTER")}
             </button>
           </form>
-          <div className="mt-8 text-center text-xs md:text-sm text-[#8B949E]">
-            {authMode === "login" ? "Don't have an account?" : "Already have an account?"}
-            <button onClick={() => { setAuthMode(authMode === "login" ? "signup" : "login"); setAuthError(""); }} className="text-[#D4AF37] font-medium ml-2 hover:underline">
-              {authMode === "login" ? "Request Access" : "Log in"}
+
+          {/* Diagonal stripes texture at bottom */}
+          <div className="h-4 w-full mt-10" style={{backgroundImage: 'repeating-linear-gradient(45deg, #D31010, #D31010 2px, transparent 2px, transparent 8px)'}}></div>
+
+          <div className="mt-6 text-center text-xs text-gray-500 font-bold uppercase tracking-widest">
+            {authMode === "login" ? "NO SIGNAL?" : "ALREADY REGISTERED?"}
+            <button onClick={() => { setAuthMode(authMode === "login" ? "signup" : "login"); setAuthError(""); }} className="text-white hover:text-[#D31010] ml-2 underline decoration-[#D31010] underline-offset-4 transition-colors">
+              {authMode === "login" ? "CREATE ONE." : "LOGIN."}
             </button>
           </div>
         </div>
@@ -438,77 +459,81 @@ function App() {
     );
   }
 
+  // ==========================================
+  // MAIN APP SCREEN (DARKLANDS THEME)
+  // ==========================================
   return (
-    <div className="h-screen w-screen bg-[#090A0F] text-[#EDEDED] flex overflow-hidden relative">
+    <div className="h-screen w-screen bg-[#111111] text-[#E5E5E5] flex overflow-hidden relative font-sans selection:bg-[#D31010] selection:text-white">
       
+      {/* Noise overlay for gritty feel */}
+      <div className="absolute inset-0 opacity-[0.02] pointer-events-none mix-blend-overlay z-0" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")'}}></div>
+
+      {/* ✅ RESTORED TOOLTIP RENDER */}
       {tooltip.show && (
-        <div 
-          className="fixed z-[100] px-3 py-2 bg-[#13151A] border border-white/10 text-white text-xs font-medium rounded-lg shadow-2xl pointer-events-none whitespace-nowrap"
-          style={{ top: tooltip.top, left: tooltip.left, transform: 'translateY(-50%)' }}
-        >
+        <div className="fixed z-[100] px-3 py-1.5 bg-[#D31010] text-white text-[10px] font-black uppercase tracking-widest rounded-none pointer-events-none whitespace-nowrap"
+          style={{ top: tooltip.top, left: tooltip.left, transform: 'translateY(-50%)' }}>
           {tooltip.text}
-          <div className="absolute top-1/2 -left-1 w-2 h-2 bg-[#13151A] border-l border-b border-white/10 rotate-45 -translate-y-1/2"></div>
         </div>
       )}
 
       {!isSharedView && isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden transition-opacity duration-300" 
-          onClick={() => setIsSidebarOpen(false)} 
-        />
+        <div className="fixed inset-0 bg-black/80 z-30 md:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
       )}
 
+      {/* ✅ LEFT SIDEBAR */}
       {!isSharedView && (
-        <div className={`fixed md:relative z-40 h-full transition-all duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0 w-[85vw] sm:w-[320px]' : '-translate-x-full md:translate-x-0 md:w-[96px]'} p-2 md:pl-4 md:py-4 shrink-0`}>
-          <div className={`bg-[#13151A]/90 backdrop-blur-xl border border-white/5 flex flex-col h-full rounded-[24px] md:rounded-[32px] shadow-2xl transition-all duration-300 ${isSidebarOpen ? 'p-4 md:p-5' : 'p-4 md:py-6 md:px-3 items-center'}`}>
-            <div className={`flex w-full items-center ${isSidebarOpen ? 'justify-between' : 'justify-center flex-col gap-5'} mb-6 md:mb-8 mt-1`}>
-              <div onMouseEnter={(e) => handleMouseEnter(e, "NEO-Z Dashboard")} onMouseLeave={handleMouseLeave} className="flex items-center gap-3 cursor-pointer">
-                <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-[#D4AF37] to-[#A88728] rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(212,175,55,0.2)] shrink-0">
-                  <div className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 bg-[#090A0F] rounded-sm rotate-45"></div>
+        <div className={`fixed md:relative z-40 h-full transition-all duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0 w-[85vw] sm:w-[320px]' : '-translate-x-full md:translate-x-0 md:w-[80px]'} bg-[#0A0A0A] border-r border-[#333] shrink-0`}>
+          <div className="flex flex-col h-full p-4 md:p-6">
+            
+            <div className={`flex w-full items-center ${isSidebarOpen ? 'justify-between' : 'justify-center flex-col gap-6'} mb-8 pb-6 border-b border-[#333]`}>
+              <div onMouseEnter={(e) => handleMouseEnter(e, "DASHBOARD")} onMouseLeave={handleMouseLeave} className="flex items-center gap-3 cursor-pointer">
+                <div className="text-[#D31010] font-black text-2xl leading-none tracking-tighter">
+                  N.
                 </div>
-                {isSidebarOpen && <h2 className="text-white font-display font-bold text-lg md:text-xl tracking-tight">NEO-Z</h2>}
+                {isSidebarOpen && <h2 className="text-[#D31010] font-black uppercase text-2xl tracking-tighter leading-none mt-1">NEO-Z</h2>}
               </div>
-              <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} onMouseEnter={(e) => handleMouseEnter(e, isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar")} onMouseLeave={handleMouseLeave} className="text-[#8B949E] hover:text-white transition-colors cursor-pointer p-1 rounded-md hover:bg-white/5">
-                <X size={20} strokeWidth={1.5} className="md:hidden" />
-                <Menu size={20} strokeWidth={1.5} className="hidden md:block" />
+              <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} onMouseEnter={(e) => handleMouseEnter(e, isSidebarOpen ? "COLLAPSE" : "EXPAND")} onMouseLeave={handleMouseLeave} className="text-gray-500 hover:text-white transition-colors">
+                <X size={24} strokeWidth={2} className="md:hidden" />
+                <Menu size={24} strokeWidth={2} className="hidden md:block" />
               </button>
             </div>
 
-            <button onClick={() => createNewChat(null)} onMouseEnter={(e) => handleMouseEnter(e, "New Conversation")} onMouseLeave={handleMouseLeave} className={`w-full bg-white/5 border border-white/10 text-white font-medium ${isSidebarOpen ? 'py-3 rounded-xl md:rounded-2xl flex items-center justify-center gap-2' : 'p-3 rounded-xl md:rounded-2xl flex justify-center'} mb-4 md:mb-6 hover:bg-white/10 transition-all text-sm md:text-base shrink-0`}>
-              <Plus size={isSidebarOpen ? 16 : 20} strokeWidth={2} className="text-[#D4AF37]" /> 
-              {isSidebarOpen && <span>New Conversation</span>}
+            <button onClick={() => createNewChat(null)} onMouseEnter={(e) => handleMouseEnter(e, "NEW TRACK")} onMouseLeave={handleMouseLeave} className={`w-full border border-[#D31010] text-[#D31010] hover:bg-[#D31010] hover:text-white font-black uppercase tracking-widest text-xs ${isSidebarOpen ? 'py-3 flex items-center justify-center gap-2' : 'p-3 flex justify-center'} mb-8 transition-colors shrink-0`}>
+              <Plus size={isSidebarOpen ? 16 : 20} strokeWidth={3}/> 
+              {isSidebarOpen && <span>NEW TRACK</span>}
             </button>
 
-            <div className="flex-1 w-full overflow-y-auto overflow-x-hidden scrollbar-hide space-y-4 md:space-y-6">
+            <div className="flex-1 w-full overflow-y-auto scrollbar-hide space-y-8">
+              {/* VOLUMES / WORKSPACES */}
               <div className="w-full flex flex-col items-center md:items-stretch">
                 {isSidebarOpen ? (
-                  <div className="flex items-center justify-between px-2 mb-2 md:mb-3">
-                    <p className="text-[9px] md:text-[10px] text-[#8B949E] font-bold uppercase tracking-widest">Workspaces</p>
-                    <button onClick={() => setIsProjectModalOpen(true)} className="text-[#8B949E] hover:text-[#D4AF37] transition-colors p-1"><Plus size={14}/></button>
+                  <div className="flex items-center justify-between mb-4 border-b border-[#333] pb-2">
+                    <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">RECORD LABELS.</p>
+                    <button onClick={() => setIsProjectModalOpen(true)} className="text-gray-500 hover:text-[#D31010]"><Plus size={14} strokeWidth={3}/></button>
                   </div>
-                ) : ( <div className="w-8 h-[1px] bg-white/10 mb-4 rounded-full" /> )}
+                ) : ( <div className="w-full h-px bg-[#333] mb-6" /> )}
                 
                 <div className="space-y-1 w-full flex flex-col items-center md:items-stretch">
                   {projects.map(proj => (
                     <div key={proj._id} className="flex flex-col w-full">
-                      <div onClick={() => { setActiveProjectId(activeProjectId === proj._id ? null : proj._id); if (!isSidebarOpen && window.innerWidth >= 768) setIsSidebarOpen(true); }} onMouseEnter={(e) => handleMouseEnter(e, proj.name)} onMouseLeave={handleMouseLeave} className={`flex items-center ${isSidebarOpen ? 'gap-2 md:gap-3 px-3 py-2 md:py-2.5 justify-start' : 'justify-center p-2.5 mx-auto'} w-full rounded-lg md:rounded-xl cursor-pointer transition-all ${activeProjectId === proj._id ? "bg-white/10 text-white shadow-inner" : "text-[#8B949E] hover:bg-white/5 hover:text-white"}`}>
-                        {activeProjectId === proj._id ? <FolderOpen size={isSidebarOpen ? 14 : 18} strokeWidth={1.5} className="text-[#D4AF37] shrink-0" /> : <Folder size={isSidebarOpen ? 14 : 18} strokeWidth={1.5} className="shrink-0" />}
-                        {isSidebarOpen && <span className="font-medium text-xs md:text-sm truncate flex-1">{proj.name}</span>}
-                        {isSidebarOpen && <ChevronRight size={12} className={`transition-transform opacity-50 shrink-0 ${activeProjectId === proj._id ? "rotate-90" : ""}`} />}
+                      <div onClick={() => { setActiveProjectId(activeProjectId === proj._id ? null : proj._id); if (!isSidebarOpen && window.innerWidth >= 768) setIsSidebarOpen(true); }} onMouseEnter={(e) => handleMouseEnter(e, proj.name)} onMouseLeave={handleMouseLeave} className={`flex items-center ${isSidebarOpen ? 'gap-3 px-2 py-2 justify-start' : 'justify-center p-3 mx-auto'} w-full cursor-pointer transition-colors ${activeProjectId === proj._id ? "bg-[#111] text-[#D31010] border-l-2 border-[#D31010]" : "text-gray-500 hover:bg-[#111] hover:text-white border-l-2 border-transparent"}`}>
+                        {activeProjectId === proj._id ? <FolderOpen size={16} strokeWidth={2} className="shrink-0" /> : <Folder size={16} strokeWidth={2} className="shrink-0" />}
+                        {isSidebarOpen && <span className="font-bold text-sm tracking-wide truncate flex-1 uppercase">{proj.name}</span>}
+                        {isSidebarOpen && <ChevronRight size={14} strokeWidth={2.5} className={`transition-transform shrink-0 ${activeProjectId === proj._id ? "rotate-90 text-[#D31010]" : ""}`} />}
                       </div>
                       
                       {isSidebarOpen && activeProjectId === proj._id && (
-                        <div className="ml-4 md:ml-5 border-l border-white/10 pl-2 md:pl-3 mt-1 space-y-1 py-1 w-full">
+                        <div className="ml-2 border-l border-[#333] pl-3 mt-1 space-y-1 py-2 w-full">
                           {projectChats.filter(c => c.projectId === proj._id).map(chat => (
-                            <div key={chat._id} onClick={() => selectChatMobileFriendly(chat._id)} className={`group flex items-center justify-between text-[11px] md:text-xs px-2 md:px-3 py-1.5 md:py-2 rounded-md md:rounded-lg cursor-pointer transition-all ${activeChatId === chat._id ? "text-white bg-[#D4AF37]/10" : "text-[#8B949E] hover:text-white hover:bg-white/5"}`}>
-                              <span className="truncate font-medium pr-2">{chat.title}</span>
-                              <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0">
-                                 <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} className="hover:text-blue-400 p-1"><Share2 size={12} /></button>
-                                 <button onClick={(e) => deleteChat(e, chat._id)} className="hover:text-red-400 p-1"><Trash2 size={12} /></button>
+                            <div key={chat._id} onClick={() => selectChatMobileFriendly(chat._id)} className={`group flex items-center justify-between text-xs px-2 py-2 cursor-pointer transition-colors ${activeChatId === chat._id ? "text-white bg-[#D31010]/10 font-bold" : "text-gray-500 hover:text-white hover:bg-[#111] font-medium"}`}>
+                              <span className="truncate pr-2 uppercase">{chat.title}</span>
+                              <div className="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0">
+                                 <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} className="hover:text-white"><Share2 size={12}/></button>
+                                 <button onClick={(e) => deleteChat(e, chat._id)} className="hover:text-[#D31010]"><Trash2 size={12}/></button>
                               </div>
                             </div>
                           ))}
-                          <button onClick={() => createNewChat(proj._id)} className="text-[9px] md:text-[10px] font-medium text-[#D4AF37] px-2 md:px-3 py-2 hover:bg-white/5 rounded-lg w-full text-left transition-colors">+ Add Document</button>
+                          <button onClick={() => createNewChat(proj._id)} className="text-[10px] font-black tracking-widest text-[#D31010] px-2 py-2 hover:bg-[#111] w-full text-left transition-colors mt-2 uppercase">+ ADD TRACK</button>
                         </div>
                       )}
                     </div>
@@ -516,203 +541,236 @@ function App() {
                 </div>
               </div>
 
+              {/* RECENT THREADS */}
               <div className="w-full flex flex-col items-center md:items-stretch">
                 {isSidebarOpen ? (
-                  <p className="text-[9px] md:text-[10px] text-[#8B949E] font-bold uppercase tracking-widest mb-2 md:mb-3 px-2">Recent Threads</p>
-                ) : ( <div className="w-8 h-[1px] bg-white/10 mt-2 mb-4 rounded-full" /> )}
+                   <div className="flex items-center justify-between mb-4 border-b border-[#333] pb-2">
+                     <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">SINGLES.</p>
+                   </div>
+                ) : ( <div className="w-full h-px bg-[#333] mb-6" /> )}
                 <div className="space-y-1 w-full flex flex-col items-center md:items-stretch">
                   {standaloneChats.map(chat => (
-                    <div key={chat._id} onClick={() => selectChatMobileFriendly(chat._id)} onMouseEnter={(e) => handleMouseEnter(e, chat.title)} onMouseLeave={handleMouseLeave} className={`group flex items-center ${isSidebarOpen ? 'justify-between px-3 py-2.5 md:py-3' : 'justify-center p-2.5 mx-auto'} w-full rounded-lg md:rounded-xl cursor-pointer transition-all ${activeChatId === chat._id ? "text-white bg-white/10 shadow-inner" : "text-[#8B949E] hover:text-white hover:bg-white/5"}`}>
-                      <div className={`flex items-center ${isSidebarOpen ? 'gap-2 md:gap-3 truncate' : 'justify-center'} w-full`}>
-                        <FileText size={isSidebarOpen ? 14 : 18} strokeWidth={1.5} className={`shrink-0 ${activeChatId === chat._id ? "text-[#D4AF37]" : "text-[#8B949E]"}`} />
-                        {isSidebarOpen && <span className="truncate font-medium">{chat.title}</span>}
+                    <div key={chat._id} onClick={() => selectChatMobileFriendly(chat._id)} onMouseEnter={(e) => handleMouseEnter(e, chat.title)} onMouseLeave={handleMouseLeave} className={`group flex items-center ${isSidebarOpen ? 'justify-between px-2 py-2.5' : 'justify-center p-3 mx-auto'} w-full cursor-pointer transition-colors border-l-2 ${activeChatId === chat._id ? "bg-[#111] border-[#D31010] text-white" : "border-transparent text-gray-500 hover:text-white hover:bg-[#111]"}`}>
+                      <div className={`flex items-center ${isSidebarOpen ? 'gap-3 truncate' : 'justify-center'} w-full`}>
+                        <FileText size={16} strokeWidth={2} className={`shrink-0 ${activeChatId === chat._id ? "text-[#D31010]" : ""}`} />
+                        {isSidebarOpen && <span className="truncate font-bold text-sm tracking-wide uppercase">{chat.title}</span>}
                       </div>
                       {isSidebarOpen && (
-                        <div className={`flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0`}>
-                          <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} className="p-1 hover:text-blue-400 transition-all"><Share2 size={14} /></button>
-                          <button onClick={(e) => deleteChat(e, chat._id)} className="p-1 hover:text-red-400 transition-all"><Trash2 size={14} /></button>
+                        <div className={`flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0`}>
+                          <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} className="hover:text-white"><Share2 size={14} strokeWidth={2}/></button>
+                          <button onClick={(e) => deleteChat(e, chat._id)} className="hover:text-[#D31010]"><Trash2 size={14} strokeWidth={2}/></button>
                         </div>
                       )}
                     </div>
                   ))}
                 </div>
               </div>
-
             </div>
 
-            <div className={`w-full mt-2 md:mt-4 flex ${isSidebarOpen ? 'items-center gap-2 md:gap-3 px-2 md:px-3 pt-3 md:pt-4 border-t border-white/5' : 'flex-col items-center gap-4 pt-4 border-t border-white/5'} text-[#8B949E] shrink-0`}>
-              <div onMouseEnter={(e) => handleMouseEnter(e, user?.name || "Profile")} onMouseLeave={handleMouseLeave} className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#A88728] text-[#090A0F] flex items-center justify-center text-[10px] md:text-xs font-bold uppercase shrink-0 shadow-lg cursor-pointer">
+            {/* PROFILE SECTION */}
+            <div className={`w-full mt-6 pt-5 border-t border-[#333] flex ${isSidebarOpen ? 'items-center gap-4' : 'flex-col items-center gap-4'} shrink-0`}>
+              <div onMouseEnter={(e) => handleMouseEnter(e, "PROFILE")} onMouseLeave={handleMouseLeave} className="w-10 h-10 bg-[#D31010] flex items-center justify-center text-white font-black text-sm uppercase shrink-0 cursor-pointer">
                 {user?.name?.charAt(0) || "Z"}
               </div>
               {isSidebarOpen && (
                 <div className="flex flex-col flex-1 min-w-0">
-                  <span className="text-white text-[11px] md:text-xs font-medium truncate">{user?.name || "User Zaid"}</span>
-                  <span className="text-[9px] md:text-[10px] truncate opacity-60 font-light">{user?.email || "Pro Tier"}</span>
+                  <span className="text-white text-xs font-black tracking-widest truncate uppercase">{user?.name || "QAZI ZAID"}</span>
+                  <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mt-0.5">{user?.email || "PRO TIER"}</span>
                 </div>
               )}
-              <button onClick={handleLogout} onMouseEnter={(e) => handleMouseEnter(e, "Log Out")} onMouseLeave={handleMouseLeave} className="hover:text-red-400 p-1.5 md:p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer shrink-0" >
-                <LogOut size={isSidebarOpen ? 14 : 18} strokeWidth={1.5} />
+              <button onClick={handleLogout} onMouseEnter={(e) => handleMouseEnter(e, "LOGOUT")} onMouseLeave={handleMouseLeave} className="text-gray-500 hover:text-[#D31010] transition-colors cursor-pointer" title="Log Out">
+                <LogOut size={18} strokeWidth={2} />
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="flex-1 flex flex-col relative min-w-0 transition-all duration-300">
+      {/* ✅ MAIN CHAT AREA */}
+      <div className="flex-1 flex flex-col relative min-w-0 z-10">
         
-        <div className="h-16 md:h-20 flex items-center justify-between px-4 md:px-8 lg:px-12 shrink-0 z-10 border-b border-white/5 md:border-none">
-          <div className="flex items-center gap-2 md:gap-3 text-white max-w-[70%]">
+        {/* HEADER */}
+        <div className="h-16 md:h-24 flex items-center justify-between px-6 md:px-12 shrink-0 border-b border-[#333] bg-[#0A0A0A]">
+          <div className="flex items-center gap-4 text-white max-w-[70%]">
             {!isSharedView && !isSidebarOpen && (
-              <button onClick={() => setIsSidebarOpen(true)} className="text-[#8B949E] hover:text-white transition-colors mr-1 cursor-pointer z-20 md:hidden">
-                <Menu size={20} strokeWidth={1.5} />
+              <button onClick={() => setIsSidebarOpen(true)} className="text-gray-500 hover:text-white md:hidden">
+                <Menu size={24} strokeWidth={2} />
               </button>
             )}
-            {isSharedView && <span className="bg-white/10 text-white border border-white/20 px-2 py-0.5 md:px-3 md:py-1 rounded-full text-[8px] md:text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 shrink-0"><Star size={8}/> Shared View</span>}
-            <span className="text-xs md:text-sm font-medium text-[#8B949E] truncate font-display">/ {activeChat?.title || "Shared Conversation"}</span>
+            {isSharedView && <span className="bg-[#D31010] text-white px-2 py-1 text-[10px] font-black uppercase tracking-widest flex items-center gap-1"><Star size={12} strokeWidth={3}/> SHARED</span>}
+            <div className="flex flex-col">
+               <span className="text-[10px] text-[#D31010] font-black uppercase tracking-widest mb-0.5">CURRENT TRACK.</span>
+               <span className="text-sm md:text-lg font-black text-white uppercase tracking-wider truncate">{activeChat?.title || "UNTITLED"}</span>
+            </div>
           </div>
           
-          <div className="flex items-center gap-2 md:gap-4 shrink-0">
+          <div className="flex items-center gap-6 shrink-0 hidden md:flex">
+             <div className="flex flex-col text-right">
+                <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-0.5">DATE.</span>
+                <span className="text-sm font-black text-white uppercase tracking-wider">{dateString}</span>
+             </div>
              {!isSharedView && (
-               <button onClick={() => openShareModal(activeChat?._id)} className="flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-medium text-[#D4AF37] hover:text-white px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-[#D4AF37]/30 hover:border-[#D4AF37] bg-[#D4AF37]/5 transition-all cursor-pointer">
-                 <Share size={12} strokeWidth={1.5} /> <span className="hidden sm:inline">Share</span>
+               <button onClick={() => openShareModal(activeChat?._id)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#D31010] border border-[#D31010] px-4 py-2 hover:bg-[#D31010] hover:text-white transition-all ml-4">
+                 <Share size={14} strokeWidth={2.5} /> <span>PUBLISH</span>
                </button>
              )}
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto scrollbar-hide relative px-4 md:px-8">
+        {/* CHAT MESSAGES */}
+        <div className="flex-1 overflow-y-auto scrollbar-hide relative px-4 md:px-12">
           {(!activeChat || activeChat.messages.length === 0) ? (
-            <div className="h-full flex flex-col items-center justify-center p-4 md:p-6 mt-[-10vh]">
-               <div className="mb-6 md:mb-8">
-                  <div className="w-24 h-24 md:w-32 md:h-32 bg-white/5 rounded-[24px] md:rounded-[32px] flex items-center justify-center border border-white/10 shadow-[0_0_80px_rgba(212,175,55,0.05)] backdrop-blur-md">
-                    <Bot size={40} strokeWidth={1} className="text-[#D4AF37] opacity-80" />
+            <div className="h-full flex flex-col items-start justify-center p-4 max-w-4xl mx-auto w-full mt-[-5vh]">
+               <div className="absolute top-10 right-10 text-[#D31010] font-black text-2xl hidden md:block">X X X</div>
+               
+               <div className="flex mb-8">
+                  <div className="flex flex-col text-white/10 font-black leading-none mr-6 text-2xl">
+                     <span>+</span><span>+</span><span>+</span><span>+</span>
+                  </div>
+                  <div>
+                     <h1 className="text-6xl md:text-8xl lg:text-9xl font-black uppercase leading-[0.85] tracking-tighter text-white">
+                       THE<br/>NEO-Z<br/><span className="text-[#D31010]">CHAIN.</span>
+                     </h1>
                   </div>
                </div>
-               <h1 className="text-3xl md:text-5xl font-display font-medium text-white mb-3 md:mb-4 tracking-tight text-center">
-                 Good evening, <br className="md:hidden" />{user?.name?.split(" ")[0] || "Zaid"}.
-               </h1>
-               <p className="text-[#8B949E] text-sm md:text-lg text-center font-light">How can NEO-Z assist you today?</p>
+               
+               <div className="border-l-4 border-[#D31010] pl-6 mt-4 max-w-xl">
+                  <p className="text-sm md:text-base text-gray-400 font-medium uppercase tracking-widest leading-relaxed">
+                     <span className="text-[#D31010] font-black">All responses generated by</span><br/>
+                     the advanced Gemini Neural Engine. Enter your prompt below to initiate the sequence.
+                  </p>
+               </div>
+
+               {/* Diagonal stripes texture */}
+               <div className="h-6 w-full max-w-2xl mt-12 opacity-50" style={{backgroundImage: 'repeating-linear-gradient(45deg, #D31010, #D31010 4px, transparent 4px, transparent 12px)'}}></div>
             </div>
           ) : (
-            <div className="py-6 md:py-10 space-y-6 md:space-y-10 max-w-3xl mx-auto w-full">
+            <div className="py-8 md:py-16 space-y-10 md:space-y-16 max-w-5xl mx-auto w-full">
                {activeChat.messages.map((c, i) => {
                  const renderText = c.text.includes("[Data File Attached:") 
-                    ? c.text.replace(/```json[\s\S]*?```/, "> 📎 **Data File Successfully Processed** *(Raw data hidden for a clean view)*")
+                    ? c.text.replace(/```json[\s\S]*?```/, "> 📎 **DATA FILE PROCESSED**\n> *(Raw metric data concealed for clarity)*")
                     : c.text;
 
                  return (
                  <div key={i} className={`flex flex-col ${c.role === "user" ? "items-end" : "items-start"} w-full`}>
-                   <div className="flex items-start gap-3 md:gap-4 max-w-[95%] md:max-w-[85%]">
-                      {c.role !== 'user' && (
-                        <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center border border-white/10 bg-[#13151A] text-[#D4AF37] shadow-lg mt-1">
-                          <Bot size={16} strokeWidth={1.5} />
-                        </div>
-                      )}
-                      <div className={`text-[15px] leading-relaxed min-w-0 ${c.role === 'user' ? 'bg-[#1A1D24] border border-white/5 px-5 py-3.5 rounded-[24px] rounded-tr-[4px] text-[#EDEDED] shadow-sm break-words' : 'text-[#D1D5DB] font-normal w-full'}`}>
+                   
+                   <div className={`flex items-start gap-4 md:gap-6 max-w-[95%] md:max-w-[85%] ${c.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                      
+                      {/* Avatar */}
+                      <div className={`w-10 h-10 flex-shrink-0 flex items-center justify-center font-black uppercase text-sm mt-1 ${c.role === 'user' ? 'bg-[#D31010] text-white' : 'border border-[#555] text-gray-300'}`}>
+                        {c.role === 'user' ? (user?.name?.charAt(0) || 'U') : <Bot size={20} strokeWidth={2} />}
+                      </div>
+                      
+                      {/* Chat Bubble */}
+                      <div className={`text-sm md:text-base leading-relaxed min-w-0 ${c.role === 'user' ? 'bg-[#D31010] text-white p-5 md:p-6' : 'border border-[#333] bg-[#0F0F0F] text-gray-300 p-5 md:p-8'}`}>
                         <ReactMarkdown 
                            remarkPlugins={[remarkGfm]} 
                            components={{
-                             p: ({node, ...props}) => <p className="mb-5 last:mb-0 leading-[1.8] text-[#E2E8F0]" {...props} />,
-                             strong: ({node, ...props}) => <strong className="font-semibold text-white" {...props} />,
-                             h1: ({node, ...props}) => <h1 className="text-2xl font-bold text-white mb-4 mt-6" {...props} />,
-                             h2: ({node, ...props}) => <h2 className="text-xl font-bold text-white mb-3 mt-5" {...props} />,
-                             h3: ({node, ...props}) => <h3 className="text-lg font-medium text-white mb-2 mt-4" {...props} />,
-                             ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-5 space-y-2 text-[#E2E8F0]" {...props} />,
-                             ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-5 space-y-2 text-[#E2E8F0]" {...props} />,
-                             li: ({node, ...props}) => <li className="leading-[1.8]" {...props} />,
-                             blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-[#D4AF37] pl-4 text-sm font-medium text-[#D4AF37]/90 mb-5 bg-[#D4AF37]/5 py-2 rounded-r-lg" {...props} />,
+                             p: ({node, ...props}) => <p className="mb-5 last:mb-0 tracking-wide" {...props} />,
+                             strong: ({node, ...props}) => <strong className={`font-black uppercase tracking-wider ${c.role==='user'?'text-black':'text-white'}`} {...props} />,
+                             h1: ({node, ...props}) => <h1 className="text-3xl md:text-4xl font-black uppercase mb-6 mt-8 tracking-tighter text-white border-b border-[#333] pb-2" {...props} />,
+                             h2: ({node, ...props}) => <h2 className="text-2xl md:text-3xl font-black uppercase mb-4 mt-6 tracking-tight text-[#D31010]" {...props} />,
+                             h3: ({node, ...props}) => <h3 className="text-xl font-bold uppercase mb-3 mt-5 text-white" {...props} />,
+                             ul: ({node, ...props}) => <ul className="list-square pl-6 mb-5 space-y-3 marker:text-[#D31010]" {...props} />,
+                             ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-5 space-y-3 font-bold" {...props} />,
+                             li: ({node, ...props}) => <li className="" {...props} />,
+                             blockquote: ({node, ...props}) => <blockquote className={`border-l-4 pl-5 py-1 font-bold uppercase italic my-6 ${c.role==='user'?'border-black text-black':'border-[#D31010] text-gray-400'}`} {...props} />,
                              code: ({node, inline, children, ...props}) => !inline ? (
-                              <div className="w-full bg-[#050505] border border-white/10 rounded-xl overflow-hidden my-6 shadow-2xl">
-                                <div className="bg-[#13151A] px-4 py-2.5 border-b border-white/5 flex items-center gap-2">
-                                  <div className="w-3 h-3 rounded-full bg-[#FF5F56]"></div>
-                                  <div className="w-3 h-3 rounded-full bg-[#FFBD2E]"></div>
-                                  <div className="w-3 h-3 rounded-full bg-[#27C93F]"></div>
-                                  <span className="text-[10px] text-[#8B949E] font-mono ml-2 uppercase tracking-widest">Code Snippet</span>
+                              <div className="w-full bg-[#050505] border border-[#333] my-8 relative">
+                                <div className="absolute -top-3 -right-3 text-[#D31010] font-black text-sm">X X</div>
+                                <div className="bg-[#111] px-5 py-3 border-b border-[#333]">
+                                  <span className="text-[10px] text-[#D31010] font-black uppercase tracking-widest">SYSTEM_CODE.EXE</span>
                                 </div>
-                                <pre className="p-5 overflow-x-auto text-[#A3B8CC] font-mono text-[13px] md:text-sm leading-loose max-h-80 overflow-y-auto">{children}</pre>
+                                <pre className="p-6 overflow-x-auto text-[#ccc] font-mono text-sm leading-loose max-h-96">{children}</pre>
                               </div>
-                             ) : <code className="bg-[#D4AF37]/10 px-1.5 py-0.5 rounded-md text-[#D4AF37] font-mono text-[12px] md:text-[13px]" {...props}>{children}</code>
+                             ) : <code className={`px-1.5 py-0.5 font-bold font-mono text-sm uppercase tracking-wider ${c.role==='user'?'bg-black text-[#D31010]':'text-[#D31010]'}`} {...props}>{children}</code>
                            }}
                         >
                           {renderText}
                         </ReactMarkdown>
                       </div>
-                      {c.role === 'user' && (
-                        <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-[#D4AF37] to-[#A88728] text-[#090A0F] font-bold text-xs mt-1 shadow-lg">
-                          {user?.name?.charAt(0) || 'U'}
-                        </div>
-                      )}
+
                    </div>
                  </div>
                )})}
                {isTyping && (
-                 <div className="flex items-center gap-3 md:gap-4 max-w-[85%]">
-                   <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center border border-white/10 bg-[#13151A] text-[#D4AF37] shadow-lg">
-                      <Bot size={16} strokeWidth={1.5} />
+                 <div className="flex items-start gap-6 max-w-[85%]">
+                   <div className="w-10 h-10 border border-[#555] text-gray-300 flex-shrink-0 flex items-center justify-center mt-1">
+                      <Bot size={20} strokeWidth={2} />
                    </div>
-                   <div className="text-[#D4AF37] text-xs font-medium tracking-widest uppercase animate-pulse">Analyzing...</div>
+                   <div className="border border-[#333] bg-[#0F0F0F] p-6">
+                     <div className="text-[#D31010] font-black uppercase tracking-widest text-xs animate-pulse flex items-center gap-3">
+                       <span>TRANSMITTING</span>
+                       <span className="text-white text-lg leading-none">+ + +</span>
+                     </div>
+                   </div>
                  </div>
                )}
-               <div ref={chatEndRef} className="h-28 md:h-32" /> 
+               <div ref={chatEndRef} className="h-32 md:h-40" /> 
             </div>
           )}
         </div>
 
-        {/* Input Area */}
-        <div className="absolute bottom-4 md:bottom-6 left-0 right-0 px-2 md:px-4 pointer-events-none z-10">
-          <div className="max-w-3xl mx-auto w-full pointer-events-auto flex flex-col gap-2 relative">
+        {/* ✅ INPUT AREA */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A] to-transparent pt-12 pb-6 px-4 md:px-12 z-20">
+          <div className="max-w-5xl mx-auto w-full flex flex-col gap-3 relative">
             
-            {/* ✅ AGENT MENTION MENU (THE MAGIC BOX) */}
+            {/* ✅ AGENT MENU */}
             {showAgentMenu && (
-              <div className="absolute bottom-full left-4 mb-2 w-64 bg-[#13151A]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2">
-                <div className="px-4 py-2 border-b border-white/5 bg-white/5">
-                  <span className="text-[10px] font-bold text-[#8B949E] uppercase tracking-widest">Select Expert</span>
+              <div className="absolute bottom-[calc(100%+16px)] left-0 w-80 bg-[#111] border border-[#333] shadow-2xl z-50">
+                <div className="px-5 py-4 border-b border-[#333] flex justify-between items-center bg-[#0A0A0A]">
+                  <span className="text-[10px] font-black text-[#D31010] uppercase tracking-widest">OVERRIDE PROTOCOL</span>
+                  <span className="text-gray-600 text-xs font-black">X X</span>
                 </div>
-                <div className="max-h-48 overflow-y-auto scrollbar-hide py-1">
+                <div className="max-h-64 overflow-y-auto">
                    {EXPERT_AGENTS.filter(a => a.name.toLowerCase().includes(agentSearch)).map(agent => (
-                     <div key={agent.id} onClick={() => handleSelectAgent(agent.name)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 cursor-pointer transition-colors group">
-                       <div className={`p-1.5 rounded-lg ${agent.bg} ${agent.color} group-hover:scale-110 transition-transform`}>
-                          <agent.icon size={16} />
+                     <div key={agent.id} onClick={() => handleSelectAgent(agent.name)} className="flex items-center gap-5 px-5 py-4 hover:bg-[#D31010] cursor-pointer transition-colors group border-b border-[#222] last:border-0">
+                       <div className={`p-0 text-gray-500 group-hover:text-white transition-colors`}>
+                          <agent.icon size={20} strokeWidth={2}/>
                        </div>
                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-white">{agent.name}</span>
-                          <span className="text-[10px] text-[#8B949E]">{agent.desc}</span>
+                          <span className="text-sm font-black text-white uppercase tracking-wider">{agent.name}</span>
+                          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest group-hover:text-white/70">{agent.desc}</span>
                        </div>
                      </div>
                    ))}
-                   {EXPERT_AGENTS.filter(a => a.name.toLowerCase().includes(agentSearch)).length === 0 && (
-                     <div className="px-4 py-3 text-xs text-[#8B949E]">No experts found.</div>
-                   )}
                 </div>
               </div>
             )}
 
-            <div className="flex items-center gap-3 ml-2 md:ml-4 overflow-x-auto scrollbar-hide py-1">
+            {/* PREVIEW PILLS */}
+            <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide py-2">
                {hardwarePort && !isSharedView && (
-                 <div className="relative shrink-0 bg-[#D4AF37]/10 border border-[#D4AF37]/40 px-3 py-2.5 md:px-4 md:py-3 rounded-lg md:rounded-xl flex items-center gap-2 shadow-[0_0_15px_rgba(212,175,55,0.15)] animate-pulse">
-                   <Usb size={16} className="text-[#D4AF37]" />
-                   <span className="text-[11px] md:text-xs text-[#D4AF37] font-bold uppercase tracking-wider">Board Linked</span>
-                   <button type="button" onClick={disconnectHardware} className="ml-2 bg-[#D4AF37] text-[#090A0F] rounded-full p-0.5 hover:bg-red-500 hover:text-white transition-colors shadow-md" title="Disconnect Hardware">
-                     <X size={12} strokeWidth={2.5} />
+                 <div className="relative shrink-0 border border-[#D31010] bg-[#111] px-5 py-3 flex items-center gap-4">
+                   <Usb size={18} className="text-[#D31010]" strokeWidth={2} />
+                   <div className="flex flex-col">
+                     <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">PORT OPEN</span>
+                     <span className="text-xs text-white font-black uppercase tracking-wider">HARDWARE LINKED</span>
+                   </div>
+                   <button onClick={disconnectHardware} className="ml-4 bg-[#D31010] text-white p-1.5 hover:bg-white hover:text-black transition-colors">
+                     <X size={14} strokeWidth={3} />
                    </button>
                  </div>
                )}
                {(imagePreview || csvFile) && !isSharedView && (
                   <>
                     {imagePreview && (
-                      <div className="relative shrink-0">
-                        <img src={imagePreview} alt="Preview" className="h-10 w-10 md:h-12 md:w-12 object-cover rounded-lg md:rounded-xl border border-white/20 shadow-lg" />
-                        <button type="button" onClick={() => { setImagePreview(null); setImageBase64(null); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:scale-110 transition-all shadow-md">
-                          <X size={10} strokeWidth={2} />
+                      <div className="relative shrink-0 border border-[#333] bg-[#111] p-1">
+                        <img src={imagePreview} alt="Preview" className="h-14 w-14 object-cover grayscale" />
+                        <button type="button" onClick={() => { setImagePreview(null); setImageBase64(null); }} className="absolute -top-3 -right-3 bg-[#D31010] text-white p-1.5 hover:bg-white hover:text-black transition-colors">
+                          <X size={12} strokeWidth={3} />
                         </button>
                       </div>
                     )}
                     {csvFile && (
-                      <div className="relative shrink-0 bg-[#1A1D24] border border-[#D4AF37]/30 px-3 py-2.5 md:px-4 md:py-3 rounded-lg md:rounded-xl flex items-center gap-2 shadow-lg">
-                        <FileSpreadsheet size={16} className="text-[#D4AF37]" />
-                        <span className="text-[11px] md:text-xs text-[#EDEDED] max-w-[100px] md:max-w-[150px] truncate font-medium">{csvFile.name}</span>
-                        <button type="button" onClick={() => setCsvFile(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:scale-110 transition-all shadow-md">
-                          <X size={10} strokeWidth={2} />
+                      <div className="relative shrink-0 bg-[#111] border border-[#333] px-5 py-4 flex items-center gap-4">
+                        <FileSpreadsheet size={20} className="text-[#D31010]" strokeWidth={2}/>
+                        <div className="flex flex-col">
+                           <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">DATA ATTACHED</span>
+                           <span className="text-xs text-white max-w-[150px] truncate font-black uppercase tracking-wider">{csvFile.name}</span>
+                        </div>
+                        <button type="button" onClick={() => setCsvFile(null)} className="absolute -top-3 -right-3 bg-[#D31010] text-white p-1.5 hover:bg-white hover:text-black transition-colors">
+                          <X size={12} strokeWidth={3} />
                         </button>
                       </div>
                     )}
@@ -721,64 +779,57 @@ function App() {
             </div>
 
             {isSharedView ? (
-              <div className="bg-[#13151A]/90 backdrop-blur-2xl rounded-full border border-white/10 p-3 md:p-4 shadow-2xl flex items-center justify-between px-4 md:px-8">
-                 <p className="text-[#8B949E] text-xs md:text-sm">Shared, read-only document.</p>
-                 <button onClick={() => window.location.href = "/"} className="bg-white text-[#090A0F] font-bold px-4 py-1.5 md:px-6 md:py-2 rounded-full hover:bg-gray-200 transition-all text-xs md:text-sm">
-                    Start Chat
+              <div className="border border-[#333] bg-[#111] p-5 flex items-center justify-between">
+                 <p className="text-[#D31010] font-black uppercase tracking-widest text-xs">READ-ONLY ARCHIVE.</p>
+                 <button onClick={() => window.location.href = "/"} className="bg-white text-black font-black px-8 py-3 uppercase tracking-widest text-xs hover:bg-[#D31010] hover:text-white transition-colors">
+                    INITIALIZE NEW
                  </button>
               </div>
             ) : (
-              <form onSubmit={sendMessage} className="bg-[#13151A]/85 backdrop-blur-3xl rounded-[24px] md:rounded-[32px] border border-white/10 p-1.5 md:p-2 pl-3 md:pl-4 shadow-[0_10px_40px_rgba(0,0,0,0.6)] flex items-center focus-within:border-[#D4AF37]/50 transition-all">
+              <form onSubmit={sendMessage} className="bg-[#0A0A0A] border border-[#444] p-1.5 flex items-center focus-within:border-white transition-colors">
                 
-                <button type="button" onClick={connectHardware} className={`transition-colors cursor-pointer p-1.5 md:p-2 rounded-full shrink-0 ${hardwarePort ? 'text-[#D4AF37] bg-[#D4AF37]/10' : 'text-[#8B949E] hover:text-[#D4AF37] hover:bg-white/5'}`} title="Link External Hardware">
-                  <Usb size={16} strokeWidth={1.5} className="md:w-[18px] md:h-[18px]" />
+                <button type="button" onClick={connectHardware} className={`p-4 transition-colors shrink-0 ${hardwarePort ? 'text-[#D31010]' : 'text-gray-500 hover:text-white'}`} title="Link Hardware">
+                  <Usb size={22} strokeWidth={2} />
                 </button>
-
-                <button type="button" onClick={() => csvInputRef.current?.click()} className="text-[#8B949E] hover:text-[#D4AF37] transition-colors cursor-pointer p-1.5 md:p-2 hover:bg-white/5 rounded-full shrink-0" title="Upload CSV Data">
-                  <FileSpreadsheet size={16} strokeWidth={1.5} className="md:w-[18px] md:h-[18px]" />
+                <div className="w-px h-6 bg-[#333]"></div>
+                <button type="button" onClick={() => csvInputRef.current?.click()} className="p-4 transition-colors text-gray-500 hover:text-white shrink-0" title="Upload CSV">
+                  <FileSpreadsheet size={22} strokeWidth={2} />
                 </button>
                 <input type="file" accept=".csv" ref={csvInputRef} onChange={handleCSVUpload} className="hidden" />
-
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="text-[#8B949E] hover:text-white transition-colors cursor-pointer p-1.5 md:p-2 hover:bg-white/5 rounded-full shrink-0" title="Upload Image">
-                  <Paperclip size={16} strokeWidth={1.5} className="md:w-[18px] md:h-[18px]" />
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="p-4 transition-colors text-gray-500 hover:text-white shrink-0" title="Upload Image">
+                  <Paperclip size={22} strokeWidth={2} />
                 </button>
                 <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageUpload} className="hidden" />
 
-                {/* ✅ UPDATED INPUT TAG (Now uses onChange to detect @) */}
                 <input
                   ref={inputRef}
-                  className="flex-1 bg-transparent text-[#EDEDED] px-3 md:px-4 py-2.5 md:py-3 outline-none placeholder:text-[#8B949E] text-sm md:text-[15px] font-light min-w-0"
-                  placeholder={activeChat?.projectId ? "Command Workspace..." : "Type @ to assign an expert or message NEO-Z..."}
+                  className="flex-1 bg-transparent text-white px-6 py-4 outline-none font-bold placeholder:text-gray-600 placeholder:uppercase placeholder:font-black placeholder:tracking-widest text-sm md:text-base min-w-0"
+                  placeholder={activeChat?.projectId ? "COMMAND THE WORKSPACE..." : "TYPE @ FOR PROTOCOL OR ENTER PROMPT..."}
                   value={message}
                   onChange={handleMessageChange}
                 />
                 
-                <button type="submit" disabled={!message.trim() && !imageBase64 && !csvFile} className={`w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all cursor-pointer shrink-0 ml-1 md:ml-2 ${(message.trim() || imageBase64 || csvFile) ? "bg-[#D4AF37] text-[#090A0F] shadow-[0_0_15px_rgba(212,175,55,0.4)] hover:scale-105" : "bg-white/5 text-[#8B949E]"}`}>
-                  <Send size={16} strokeWidth={2} className="ml-0.5 md:ml-1 md:w-[18px] md:h-[18px]" />
+                <button type="submit" disabled={!message.trim() && !imageBase64 && !csvFile} className={`px-8 py-4 uppercase font-black tracking-widest text-sm transition-colors shrink-0 ${(message.trim() || imageBase64 || csvFile) ? "bg-[#D31010] text-white hover:bg-white hover:text-black" : "bg-[#111] text-gray-600 border-l border-[#333]"}`}>
+                  SEND
                 </button>
               </form>
             )}
-            <p className="text-[8px] md:text-[10px] text-center text-[#8B949E] mt-1 md:mt-2 font-medium tracking-widest uppercase opacity-50">Powered by Gemini Engine</p>
           </div>
         </div>
       </div>
 
+      {/* MODALS */}
       {isProjectModalOpen && (
-        <div className="absolute inset-0 bg-[#090A0F]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#13151A] border border-white/10 p-6 md:p-8 rounded-[24px] md:rounded-[32px] w-full max-w-sm shadow-2xl">
-            <h3 className="text-lg md:text-xl font-display font-medium text-white mb-4 md:mb-6">New Workspace</h3>
+        <div className="absolute inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-[#0A0A0A] border border-[#333] p-10 w-full max-w-md relative">
+            <div className="absolute top-4 right-4 text-[#D31010] font-black text-xl">X X</div>
+            <h3 className="text-2xl font-black text-white uppercase mb-8 tracking-tighter">NEW LABEL.</h3>
             <form onSubmit={handleCreateProject}>
-              <input 
-                type="text" 
-                placeholder="e.g. NextJS Project" 
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                autoFocus
-                className="w-full bg-[#090A0F] border border-white/10 text-white px-4 md:px-5 py-3 md:py-4 rounded-xl md:rounded-2xl mb-6 md:mb-8 outline-none focus:border-[#D4AF37]/50 transition-colors placeholder:text-[#8B949E] text-sm md:text-base"
-              />
-              <div className="flex justify-end gap-2 md:gap-3">
-                <button type="button" onClick={() => setIsProjectModalOpen(false)} className="px-4 md:px-5 py-2 md:py-3 text-xs md:text-sm text-[#8B949E] hover:text-white transition-colors font-medium">Cancel</button>
-                <button type="submit" disabled={!newProjectName.trim()} className="px-5 md:px-6 py-2 md:py-3 bg-[#D4AF37] text-[#090A0F] font-bold text-xs md:text-sm rounded-lg md:rounded-xl hover:opacity-90 transition-all disabled:opacity-50">Create</button>
+              <label className="text-[10px] text-[#D31010] font-bold uppercase tracking-widest mb-2 block">Designation.</label>
+              <input type="text" placeholder="E.G. PROJECT OMEGA" value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} autoFocus className="w-full bg-[#111] border border-[#333] text-white px-5 py-4 mb-8 outline-none focus:border-[#D31010] transition-colors font-bold uppercase placeholder:text-gray-600"/>
+              <div className="flex justify-end gap-4">
+                <button type="button" onClick={() => setIsProjectModalOpen(false)} className="px-6 py-3 text-gray-500 font-black uppercase hover:text-white transition-colors">ABORT</button>
+                <button type="submit" disabled={!newProjectName.trim()} className="px-8 py-3 bg-[#D31010] text-white font-black uppercase tracking-widest hover:bg-white hover:text-black transition-colors disabled:opacity-50">CREATE</button>
               </div>
             </form>
           </div>
@@ -786,25 +837,27 @@ function App() {
       )}
 
       {isShareModalOpen && (
-        <div className="absolute inset-0 bg-[#090A0F]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#13151A] border border-white/10 p-6 md:p-8 rounded-[24px] md:rounded-[32px] w-full max-w-sm shadow-2xl relative">
-            <button onClick={() => setIsShareModalOpen(false)} className="absolute top-6 right-6 text-[#8B949E] hover:text-white transition-colors">
-              <X size={20} strokeWidth={1.5} />
+        <div className="absolute inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-[#0A0A0A] border border-[#333] p-10 w-full max-w-md relative">
+            <button onClick={() => setIsShareModalOpen(false)} className="absolute top-5 right-5 text-gray-500 hover:text-white transition-colors">
+              <X size={24} strokeWidth={2} />
             </button>
-            <h3 className="text-lg md:text-xl font-display font-medium text-white mb-2">Share Link</h3>
-            <p className="text-[#8B949E] text-xs md:text-sm mb-6 font-light">Anyone with this link will be able to view this conversation.</p>
-            <div className="flex items-center gap-3 mb-6">
-              <a href={`https://api.whatsapp.com/send?text=Check%20out%20this%20conversation%20on%20NEO-Z:%20${encodeURIComponent(shareLink)}`} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366] hover:text-white flex items-center justify-center transition-all">
-                <MessageCircle size={20} strokeWidth={1.5} />
+            <h3 className="text-2xl font-black text-white uppercase mb-2 tracking-tighter">TRANSMIT SIGNAL.</h3>
+            <p className="text-[#D31010] text-[10px] font-black uppercase tracking-widest mb-8">Broadcast this frequency to the network.</p>
+            
+            <div className="flex items-center gap-4 mb-8">
+              <a href={`https://api.whatsapp.com/send?text=LISTEN%20TO%20THIS:%20${encodeURIComponent(shareLink)}`} target="_blank" rel="noopener noreferrer" className="w-16 h-16 bg-[#111] border border-[#333] text-white hover:border-[#25D366] hover:text-[#25D366] flex items-center justify-center transition-colors">
+                <MessageCircle size={28} strokeWidth={2} />
               </a>
-              <a href={`mailto:?subject=NEO-Z%20Conversation&body=Check%20out%20this%20AI%20conversation:%20${encodeURIComponent(shareLink)}`} className="w-12 h-12 rounded-full bg-white/5 text-white hover:bg-white/10 flex items-center justify-center transition-all">
-                <Mail size={20} strokeWidth={1.5} />
+              <a href={`mailto:?subject=NEO-Z%20TRANSMISSION&body=Link:%20${encodeURIComponent(shareLink)}`} className="w-16 h-16 bg-[#111] border border-[#333] text-white hover:border-white hover:text-white flex items-center justify-center transition-colors">
+                <Mail size={28} strokeWidth={2} />
               </a>
             </div>
-            <div className="flex items-center bg-[#090A0F] border border-white/10 p-1.5 rounded-xl md:rounded-2xl">
-              <input type="text" readOnly value={shareLink} className="flex-1 bg-transparent text-[#EDEDED] px-3 py-2 text-xs md:text-sm outline-none font-mono tracking-tight truncate"/>
-              <button onClick={handleCopyLink} className={`p-2.5 rounded-lg md:rounded-xl transition-all flex items-center justify-center shrink-0 ${isCopied ? 'bg-green-500/20 text-green-400' : 'bg-[#D4AF37] text-[#090A0F] hover:opacity-90'}`}>
-                {isCopied ? <Check size={16} strokeWidth={2} /> : <Copy size={16} strokeWidth={1.5} />}
+
+            <div className="flex items-center bg-[#111] border border-[#333]">
+              <input type="text" readOnly value={shareLink} className="flex-1 bg-transparent text-gray-400 px-4 py-4 text-sm outline-none font-mono tracking-tighter truncate"/>
+              <button onClick={handleCopyLink} className={`px-6 py-4 font-black uppercase tracking-widest transition-colors flex items-center justify-center shrink-0 border-l border-[#333] ${isCopied ? 'bg-white text-black' : 'bg-[#D31010] text-white hover:bg-white hover:text-black'}`}>
+                {isCopied ? "COPIED" : "COPY"}
               </button>
             </div>
           </div>
