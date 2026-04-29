@@ -33,6 +33,9 @@ function App() {
   const [authError, setAuthError] = useState("");
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
+  // ✅ NEW: CUSTOM NOTIFICATION STATE (Replaces alerts)
+  const [notification, setNotification] = useState({ show: false, message: "" });
+
   const [chats, setChats] = useState([]);
   const [projects, setProjects] = useState([]);
   const [activeChatId, setActiveChatId] = useState(null);
@@ -41,9 +44,7 @@ function App() {
   const [isTyping, setIsTyping] = useState(false);
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
-  
-  // ✅ FIX: TOOLTIP STATE ADDED BACK
-  const [tooltip, setTooltip] = useState({ show: false, text: "", top: 0, left: 0 });
+  const [tooltip, setTooltip] = useState({ show: false, text: "", top: 0, left: 0, position: "right" });
   
   const urlParams = new URLSearchParams(window.location.search);
   const sharedChatId = urlParams.get('share');
@@ -80,44 +81,61 @@ function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // ✅ FIX: TOOLTIP HANDLERS ADDED BACK
-  const handleMouseEnter = (e, text) => {
-    if (isSidebarOpen || window.innerWidth < 768) return; 
+  // ✅ HELPER: Show Custom Notification
+  const showNotification = (msg) => {
+    setNotification({ show: true, message: msg });
+    setTimeout(() => setNotification({ show: false, message: "" }), 3500);
+  };
+
+  const handleMouseEnter = (e, text, position = "right") => {
+    if (window.innerWidth < 768) return; 
     const rect = e.currentTarget.getBoundingClientRect();
-    setTooltip({
-      show: true,
-      text: text,
-      top: rect.top + (rect.height / 2),
-      left: rect.right + 12
-    });
+    let top = rect.top + (rect.height / 2);
+    let left = rect.right + 12;
+
+    if (position === "top") {
+      top = rect.top - 12;
+      left = rect.left + (rect.width / 2);
+    } else if (position === "bottom") {
+      top = rect.bottom + 12;
+      left = rect.left + (rect.width / 2);
+    }
+    setTooltip({ show: true, text, top, left, position });
   };
 
   const handleMouseLeave = () => {
-    setTooltip({ show: false, text: "", top: 0, left: 0 });
+    setTooltip({ show: false, text: "", top: 0, left: 0, position: "right" });
   };
 
+  // ✅ FIXED: AUTO-LOGIN IMPLEMENTED
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
     setAuthError("");
     setIsAuthLoading(true);
     try {
       const endpoint = authMode === "login" ? "/login" : "/signup";
-      const res = await axios.post(`${API_BASE_URL}${endpoint}`, authForm);
-      if (authMode === "signup") {
-         alert("Signup Successful! Please login with your new account.");
-         setAuthMode("login");
-         setAuthForm({ ...authForm, password: "" }); 
-      } else {
-         const newToken = res.data.token;
-         const userData = res.data.user;
-         setToken(newToken);
-         setUser(userData);
-         localStorage.setItem("token", newToken);
-         localStorage.setItem("user", JSON.stringify(userData));
-         axios.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
+      let res = await axios.post(`${API_BASE_URL}${endpoint}`, authForm);
+      
+      let newToken = res.data.token;
+      let userData = res.data.user;
+
+      // Agar signup tha aur backend ne direct token nahi diya, toh auto-login API call karo
+      if (authMode === "signup" && !newToken) {
+         const loginRes = await axios.post(`${API_BASE_URL}/login`, { email: authForm.email, password: authForm.password });
+         newToken = loginRes.data.token;
+         userData = loginRes.data.user;
       }
+
+      setToken(newToken);
+      setUser(userData);
+      localStorage.setItem("token", newToken);
+      localStorage.setItem("user", JSON.stringify(userData));
+      axios.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
+      
+      showNotification(authMode === "signup" ? "SIGNAL CREATED. WELCOME." : "NODE CONNECTED.");
+
     } catch (err) {
-      setAuthError(err.response?.data?.error || "Authentication failed. Try again.");
+      setAuthError(err.response?.data?.error || "AUTHENTICATION FAILED.");
     } finally {
       setIsAuthLoading(false);
     }
@@ -132,6 +150,7 @@ function App() {
     localStorage.removeItem("user");
     delete axios.defaults.headers.common["Authorization"];
     disconnectHardware(); 
+    showNotification("CONNECTION TERMINATED.");
   };
 
   useEffect(() => {
@@ -142,8 +161,8 @@ function App() {
           setChats([res.data]);
           setActiveChatId(res.data._id);
         } catch (err) {
-          alert("Yeh link expire ho chuka hai ya invalid hai!");
-          window.location.href = "/"; 
+          showNotification("LINK EXPIRED OR INVALID."); // ✅ Custom Alert
+          setTimeout(() => window.location.href = "/", 2000);
         }
         return; 
       }
@@ -191,7 +210,7 @@ function App() {
   };
 
   const openShareModal = (id) => {
-    if(id === "temp") return alert("Please start the conversation before sharing.");
+    if(id === "temp") return showNotification("START CONVERSATION FIRST."); // ✅ Custom Alert
     const link = `${window.location.origin}/?share=${id}`;
     setShareLink(link);
     setIsShareModalOpen(true);
@@ -227,6 +246,7 @@ function App() {
       setIsProjectModalOpen(false);
       setNewProjectName("");
       setActiveProjectId(res.data._id);
+      showNotification("LABEL CREATED.");
     } catch(err) {}
   };
 
@@ -261,8 +281,9 @@ function App() {
       skipEmptyLines: true,
       complete: function(results) {
         setCsvFile({ name: file.name, data: JSON.stringify(results.data, null, 2) });
+        showNotification("DATA ATTACHED.");
       },
-      error: function(err) { alert("Failed to parse CSV file: " + err.message); }
+      error: function(err) { showNotification("PARSE FAILED: " + err.message); } // ✅ Custom Alert
     });
     if (csvInputRef.current) csvInputRef.current.value = "";
   };
@@ -278,7 +299,7 @@ function App() {
 
   const connectHardware = async () => {
     if (!("serial" in navigator)) {
-      alert("Oops! Web Serial API is not supported in this browser. Please use Chrome or Edge.");
+      showNotification("WEB SERIAL API NOT SUPPORTED."); // ✅ Custom Alert
       return;
     }
     try {
@@ -287,10 +308,7 @@ function App() {
       setHardwarePort(port);
       setChats(prevChats => prevChats.map(chat => {
         if (chat._id === activeChatId) {
-          return {
-            ...chat,
-            messages: [...chat.messages, { role: "bot", text: "⚡ **HARDWARE PORT OPEN.** AWAITING SIGNAL." }]
-          };
+          return { ...chat, messages: [...chat.messages, { role: "bot", text: "⚡ **HARDWARE PORT OPEN.** AWAITING SIGNAL." }] };
         }
         return chat;
       }));
@@ -299,7 +317,7 @@ function App() {
 
   const disconnectHardware = async () => {
     if (hardwarePort) {
-      try { await hardwarePort.close(); setHardwarePort(null); } catch (err) {}
+      try { await hardwarePort.close(); setHardwarePort(null); showNotification("HARDWARE DISCONNECTED."); } catch (err) {}
     }
   };
 
@@ -389,20 +407,29 @@ function App() {
   const dateString = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
 
   // ==========================================
-  // AUTHENTICATION SCREEN (DARKLANDS THEME)
+  // GLOBAL NOTIFICATION COMPONENT
+  // ==========================================
+  const NotificationToast = () => {
+    if (!notification.show) return null;
+    return (
+      <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[999] bg-[#111] border-2 border-[#D31010] py-3 px-6 shadow-[6px_6px_0px_#D31010] animate-in slide-in-from-top-4 flex items-center gap-4">
+        <span className="text-[#D31010] font-black text-xl leading-none">!</span>
+        <span className="text-white font-black uppercase tracking-widest text-xs">{notification.message}</span>
+      </div>
+    );
+  };
+
+  // ==========================================
+  // AUTHENTICATION SCREEN (DARKLANDS)
   // ==========================================
   if (!token && !isSharedView) {
     return (
       <div className="min-h-screen w-screen bg-[#111111] text-[#E5E5E5] flex items-center justify-center relative overflow-hidden px-4 py-8 font-sans selection:bg-[#D31010] selection:text-white">
-        {/* Subtle noise/texture overlay */}
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-overlay" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")'}}></div>
-        
-        <div className="border border-[#333] bg-[#0A0A0A] p-8 md:p-12 w-full max-w-md relative z-10">
-          
-          <div className="absolute top-4 right-4 text-[#D31010] text-xl font-black tracking-widest leading-none">
-            X X
-          </div>
+        <NotificationToast />
 
+        <div className="border border-[#333] bg-[#0A0A0A] p-8 md:p-12 w-full max-w-md relative z-10">
+          <div className="absolute top-4 right-4 text-[#D31010] text-xl font-black tracking-widest leading-none">X X</div>
           <div className="flex flex-col mb-10 border-b border-[#333] pb-6">
             <h2 className="text-[#D31010] font-black uppercase text-5xl tracking-tighter leading-none mb-2">NEO-Z.</h2>
             <div className="flex justify-between text-[10px] text-gray-500 uppercase tracking-widest w-full">
@@ -410,20 +437,10 @@ function App() {
               <span>{dateString}</span>
             </div>
           </div>
-
-          <h3 className="text-xl font-black text-white uppercase mb-2">
-            {authMode === "login" ? "ENTER THE DARKLANDS" : "INITIALIZE NODE"}
-          </h3>
-          <p className="text-gray-500 text-xs mb-8 font-medium uppercase tracking-widest">
-            {authMode === "login" ? "IDENTIFY YOURSELF." : "CREATE YOUR SIGNAL."}
-          </p>
-
-          {authError && (
-            <div className="bg-[#D31010] text-white p-3 text-xs mb-6 font-bold uppercase tracking-widest border border-red-900">
-              {authError}
-            </div>
-          )}
-
+          <h3 className="text-xl font-black text-white uppercase mb-2">{authMode === "login" ? "ENTER THE DARKLANDS" : "INITIALIZE NODE"}</h3>
+          <p className="text-gray-500 text-xs mb-8 font-medium uppercase tracking-widest">{authMode === "login" ? "IDENTIFY YOURSELF." : "CREATE YOUR SIGNAL."}</p>
+          {authError && <div className="bg-[#D31010] text-white p-3 text-xs mb-6 font-bold uppercase tracking-widest border border-red-900">{authError}</div>}
+          
           <form onSubmit={handleAuthSubmit} className="space-y-4">
             {authMode === "signup" && (
               <div>
@@ -439,15 +456,12 @@ function App() {
               <label className="text-[10px] text-[#D31010] font-bold uppercase tracking-widest mb-1 block">Password.</label>
               <input type="password" required value={authForm.password} onChange={(e) => setAuthForm({...authForm, password: e.target.value})} className="w-full bg-[#111] border border-[#333] text-white px-4 py-3 outline-none focus:border-[#D31010] transition-colors font-medium rounded-none"/>
             </div>
-
             <button type="submit" disabled={isAuthLoading} className="w-full bg-[#D31010] text-white font-black uppercase tracking-widest text-sm py-4 mt-6 hover:bg-white hover:text-black transition-all disabled:opacity-50">
               {isAuthLoading ? "PROCESSING..." : (authMode === "login" ? "CONNECT" : "REGISTER")}
             </button>
           </form>
 
-          {/* Diagonal stripes texture at bottom */}
           <div className="h-4 w-full mt-10" style={{backgroundImage: 'repeating-linear-gradient(45deg, #D31010, #D31010 2px, transparent 2px, transparent 8px)'}}></div>
-
           <div className="mt-6 text-center text-xs text-gray-500 font-bold uppercase tracking-widest">
             {authMode === "login" ? "NO SIGNAL?" : "ALREADY REGISTERED?"}
             <button onClick={() => { setAuthMode(authMode === "login" ? "signup" : "login"); setAuthError(""); }} className="text-white hover:text-[#D31010] ml-2 underline decoration-[#D31010] underline-offset-4 transition-colors">
@@ -460,18 +474,25 @@ function App() {
   }
 
   // ==========================================
-  // MAIN APP SCREEN (DARKLANDS THEME)
+  // MAIN APP SCREEN (DARKLANDS)
   // ==========================================
   return (
     <div className="h-screen w-screen bg-[#111111] text-[#E5E5E5] flex overflow-hidden relative font-sans selection:bg-[#D31010] selection:text-white">
       
-      {/* Noise overlay for gritty feel */}
       <div className="absolute inset-0 opacity-[0.02] pointer-events-none mix-blend-overlay z-0" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")'}}></div>
 
-      {/* ✅ RESTORED TOOLTIP RENDER */}
+      {/* RENDER CUSTOM NOTIFICATIONS & TOOLTIPS */}
+      <NotificationToast />
+
       {tooltip.show && (
-        <div className="fixed z-[100] px-3 py-1.5 bg-[#D31010] text-white text-[10px] font-black uppercase tracking-widest rounded-none pointer-events-none whitespace-nowrap"
-          style={{ top: tooltip.top, left: tooltip.left, transform: 'translateY(-50%)' }}>
+        <div className="fixed z-[100] px-3 py-1.5 bg-[#D31010] text-white text-[10px] font-black uppercase tracking-widest rounded-none pointer-events-none whitespace-nowrap shadow-[4px_4px_0px_rgba(0,0,0,0.5)] border border-[#555]"
+          style={{ 
+            top: tooltip.top, 
+            left: tooltip.left, 
+            transform: tooltip.position === "top" ? 'translate(-50%, -100%)' : 
+                       tooltip.position === "bottom" ? 'translate(-50%, 0)' : 
+                       'translateY(-50%)' 
+          }}>
           {tooltip.text}
         </div>
       )}
@@ -486,37 +507,34 @@ function App() {
           <div className="flex flex-col h-full p-4 md:p-6">
             
             <div className={`flex w-full items-center ${isSidebarOpen ? 'justify-between' : 'justify-center flex-col gap-6'} mb-8 pb-6 border-b border-[#333]`}>
-              <div onMouseEnter={(e) => handleMouseEnter(e, "DASHBOARD")} onMouseLeave={handleMouseLeave} className="flex items-center gap-3 cursor-pointer">
-                <div className="text-[#D31010] font-black text-2xl leading-none tracking-tighter">
-                  N.
-                </div>
+              <div onMouseEnter={(e) => handleMouseEnter(e, "SYSTEM DASHBOARD")} onMouseLeave={handleMouseLeave} className="flex items-center gap-3 cursor-pointer">
+                <div className="text-[#D31010] font-black text-2xl leading-none tracking-tighter">N.</div>
                 {isSidebarOpen && <h2 className="text-[#D31010] font-black uppercase text-2xl tracking-tighter leading-none mt-1">NEO-Z</h2>}
               </div>
-              <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} onMouseEnter={(e) => handleMouseEnter(e, isSidebarOpen ? "COLLAPSE" : "EXPAND")} onMouseLeave={handleMouseLeave} className="text-gray-500 hover:text-white transition-colors">
+              <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} onMouseEnter={(e) => handleMouseEnter(e, isSidebarOpen ? "COLLAPSE PANEL" : "EXPAND PANEL")} onMouseLeave={handleMouseLeave} className="text-gray-500 hover:text-white transition-colors">
                 <X size={24} strokeWidth={2} className="md:hidden" />
                 <Menu size={24} strokeWidth={2} className="hidden md:block" />
               </button>
             </div>
 
-            <button onClick={() => createNewChat(null)} onMouseEnter={(e) => handleMouseEnter(e, "NEW TRACK")} onMouseLeave={handleMouseLeave} className={`w-full border border-[#D31010] text-[#D31010] hover:bg-[#D31010] hover:text-white font-black uppercase tracking-widest text-xs ${isSidebarOpen ? 'py-3 flex items-center justify-center gap-2' : 'p-3 flex justify-center'} mb-8 transition-colors shrink-0`}>
+            <button onClick={() => createNewChat(null)} onMouseEnter={(e) => handleMouseEnter(e, "INITIALIZE NEW TRACK")} onMouseLeave={handleMouseLeave} className={`w-full border border-[#D31010] text-[#D31010] hover:bg-[#D31010] hover:text-white font-black uppercase tracking-widest text-xs ${isSidebarOpen ? 'py-3 flex items-center justify-center gap-2' : 'p-3 flex justify-center'} mb-8 transition-colors shrink-0`}>
               <Plus size={isSidebarOpen ? 16 : 20} strokeWidth={3}/> 
               {isSidebarOpen && <span>NEW TRACK</span>}
             </button>
 
             <div className="flex-1 w-full overflow-y-auto scrollbar-hide space-y-8">
-              {/* VOLUMES / WORKSPACES */}
               <div className="w-full flex flex-col items-center md:items-stretch">
                 {isSidebarOpen ? (
                   <div className="flex items-center justify-between mb-4 border-b border-[#333] pb-2">
                     <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">RECORD LABELS.</p>
-                    <button onClick={() => setIsProjectModalOpen(true)} className="text-gray-500 hover:text-[#D31010]"><Plus size={14} strokeWidth={3}/></button>
+                    <button onClick={() => setIsProjectModalOpen(true)} onMouseEnter={(e) => handleMouseEnter(e, "CREATE LABEL")} onMouseLeave={handleMouseLeave} className="text-gray-500 hover:text-[#D31010]"><Plus size={14} strokeWidth={3}/></button>
                   </div>
                 ) : ( <div className="w-full h-px bg-[#333] mb-6" /> )}
                 
                 <div className="space-y-1 w-full flex flex-col items-center md:items-stretch">
                   {projects.map(proj => (
                     <div key={proj._id} className="flex flex-col w-full">
-                      <div onClick={() => { setActiveProjectId(activeProjectId === proj._id ? null : proj._id); if (!isSidebarOpen && window.innerWidth >= 768) setIsSidebarOpen(true); }} onMouseEnter={(e) => handleMouseEnter(e, proj.name)} onMouseLeave={handleMouseLeave} className={`flex items-center ${isSidebarOpen ? 'gap-3 px-2 py-2 justify-start' : 'justify-center p-3 mx-auto'} w-full cursor-pointer transition-colors ${activeProjectId === proj._id ? "bg-[#111] text-[#D31010] border-l-2 border-[#D31010]" : "text-gray-500 hover:bg-[#111] hover:text-white border-l-2 border-transparent"}`}>
+                      <div onClick={() => { setActiveProjectId(activeProjectId === proj._id ? null : proj._id); if (!isSidebarOpen && window.innerWidth >= 768) setIsSidebarOpen(true); }} onMouseEnter={(e) => handleMouseEnter(e, `OPEN: ${proj.name}`)} onMouseLeave={handleMouseLeave} className={`flex items-center ${isSidebarOpen ? 'gap-3 px-2 py-2 justify-start' : 'justify-center p-3 mx-auto'} w-full cursor-pointer transition-colors ${activeProjectId === proj._id ? "bg-[#111] text-[#D31010] border-l-2 border-[#D31010]" : "text-gray-500 hover:bg-[#111] hover:text-white border-l-2 border-transparent"}`}>
                         {activeProjectId === proj._id ? <FolderOpen size={16} strokeWidth={2} className="shrink-0" /> : <Folder size={16} strokeWidth={2} className="shrink-0" />}
                         {isSidebarOpen && <span className="font-bold text-sm tracking-wide truncate flex-1 uppercase">{proj.name}</span>}
                         {isSidebarOpen && <ChevronRight size={14} strokeWidth={2.5} className={`transition-transform shrink-0 ${activeProjectId === proj._id ? "rotate-90 text-[#D31010]" : ""}`} />}
@@ -528,8 +546,8 @@ function App() {
                             <div key={chat._id} onClick={() => selectChatMobileFriendly(chat._id)} className={`group flex items-center justify-between text-xs px-2 py-2 cursor-pointer transition-colors ${activeChatId === chat._id ? "text-white bg-[#D31010]/10 font-bold" : "text-gray-500 hover:text-white hover:bg-[#111] font-medium"}`}>
                               <span className="truncate pr-2 uppercase">{chat.title}</span>
                               <div className="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0">
-                                 <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} className="hover:text-white"><Share2 size={12}/></button>
-                                 <button onClick={(e) => deleteChat(e, chat._id)} className="hover:text-[#D31010]"><Trash2 size={12}/></button>
+                                 <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} onMouseEnter={(e) => handleMouseEnter(e, "PUBLISH")} onMouseLeave={handleMouseLeave} className="hover:text-white"><Share2 size={12}/></button>
+                                 <button onClick={(e) => deleteChat(e, chat._id)} onMouseEnter={(e) => handleMouseEnter(e, "DELETE")} onMouseLeave={handleMouseLeave} className="hover:text-[#D31010]"><Trash2 size={12}/></button>
                               </div>
                             </div>
                           ))}
@@ -541,7 +559,6 @@ function App() {
                 </div>
               </div>
 
-              {/* RECENT THREADS */}
               <div className="w-full flex flex-col items-center md:items-stretch">
                 {isSidebarOpen ? (
                    <div className="flex items-center justify-between mb-4 border-b border-[#333] pb-2">
@@ -557,8 +574,8 @@ function App() {
                       </div>
                       {isSidebarOpen && (
                         <div className={`flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0`}>
-                          <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} className="hover:text-white"><Share2 size={14} strokeWidth={2}/></button>
-                          <button onClick={(e) => deleteChat(e, chat._id)} className="hover:text-[#D31010]"><Trash2 size={14} strokeWidth={2}/></button>
+                          <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} onMouseEnter={(e) => handleMouseEnter(e, "PUBLISH")} onMouseLeave={handleMouseLeave} className="hover:text-white"><Share2 size={14} strokeWidth={2}/></button>
+                          <button onClick={(e) => deleteChat(e, chat._id)} onMouseEnter={(e) => handleMouseEnter(e, "DELETE")} onMouseLeave={handleMouseLeave} className="hover:text-[#D31010]"><Trash2 size={14} strokeWidth={2}/></button>
                         </div>
                       )}
                     </div>
@@ -567,9 +584,8 @@ function App() {
               </div>
             </div>
 
-            {/* PROFILE SECTION */}
             <div className={`w-full mt-6 pt-5 border-t border-[#333] flex ${isSidebarOpen ? 'items-center gap-4' : 'flex-col items-center gap-4'} shrink-0`}>
-              <div onMouseEnter={(e) => handleMouseEnter(e, "PROFILE")} onMouseLeave={handleMouseLeave} className="w-10 h-10 bg-[#D31010] flex items-center justify-center text-white font-black text-sm uppercase shrink-0 cursor-pointer">
+              <div onMouseEnter={(e) => handleMouseEnter(e, "IDENTITY")} onMouseLeave={handleMouseLeave} className="w-10 h-10 bg-[#D31010] flex items-center justify-center text-white font-black text-sm uppercase shrink-0 cursor-pointer">
                 {user?.name?.charAt(0) || "Z"}
               </div>
               {isSidebarOpen && (
@@ -578,7 +594,7 @@ function App() {
                   <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mt-0.5">{user?.email || "PRO TIER"}</span>
                 </div>
               )}
-              <button onClick={handleLogout} onMouseEnter={(e) => handleMouseEnter(e, "LOGOUT")} onMouseLeave={handleMouseLeave} className="text-gray-500 hover:text-[#D31010] transition-colors cursor-pointer" title="Log Out">
+              <button onClick={handleLogout} onMouseEnter={(e) => handleMouseEnter(e, "TERMINATE CONNECTION")} onMouseLeave={handleMouseLeave} className="text-gray-500 hover:text-[#D31010] transition-colors cursor-pointer" title="Log Out">
                 <LogOut size={18} strokeWidth={2} />
               </button>
             </div>
@@ -610,7 +626,7 @@ function App() {
                 <span className="text-sm font-black text-white uppercase tracking-wider">{dateString}</span>
              </div>
              {!isSharedView && (
-               <button onClick={() => openShareModal(activeChat?._id)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#D31010] border border-[#D31010] px-4 py-2 hover:bg-[#D31010] hover:text-white transition-all ml-4">
+               <button onClick={() => openShareModal(activeChat?._id)} onMouseEnter={(e) => handleMouseEnter(e, "BROADCAST TO NETWORK", "bottom")} onMouseLeave={handleMouseLeave} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#D31010] border border-[#D31010] px-4 py-2 hover:bg-[#D31010] hover:text-white transition-all ml-4">
                  <Share size={14} strokeWidth={2.5} /> <span>PUBLISH</span>
                </button>
              )}
@@ -622,7 +638,6 @@ function App() {
           {(!activeChat || activeChat.messages.length === 0) ? (
             <div className="h-full flex flex-col items-start justify-center p-4 max-w-4xl mx-auto w-full mt-[-5vh]">
                <div className="absolute top-10 right-10 text-[#D31010] font-black text-2xl hidden md:block">X X X</div>
-               
                <div className="flex mb-8">
                   <div className="flex flex-col text-white/10 font-black leading-none mr-6 text-2xl">
                      <span>+</span><span>+</span><span>+</span><span>+</span>
@@ -633,15 +648,12 @@ function App() {
                      </h1>
                   </div>
                </div>
-               
                <div className="border-l-4 border-[#D31010] pl-6 mt-4 max-w-xl">
                   <p className="text-sm md:text-base text-gray-400 font-medium uppercase tracking-widest leading-relaxed">
                      <span className="text-[#D31010] font-black">All responses generated by</span><br/>
                      the advanced Gemini Neural Engine. Enter your prompt below to initiate the sequence.
                   </p>
                </div>
-
-               {/* Diagonal stripes texture */}
                <div className="h-6 w-full max-w-2xl mt-12 opacity-50" style={{backgroundImage: 'repeating-linear-gradient(45deg, #D31010, #D31010 4px, transparent 4px, transparent 12px)'}}></div>
             </div>
           ) : (
@@ -650,18 +662,12 @@ function App() {
                  const renderText = c.text.includes("[Data File Attached:") 
                     ? c.text.replace(/```json[\s\S]*?```/, "> 📎 **DATA FILE PROCESSED**\n> *(Raw metric data concealed for clarity)*")
                     : c.text;
-
                  return (
                  <div key={i} className={`flex flex-col ${c.role === "user" ? "items-end" : "items-start"} w-full`}>
-                   
                    <div className={`flex items-start gap-4 md:gap-6 max-w-[95%] md:max-w-[85%] ${c.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                      
-                      {/* Avatar */}
                       <div className={`w-10 h-10 flex-shrink-0 flex items-center justify-center font-black uppercase text-sm mt-1 ${c.role === 'user' ? 'bg-[#D31010] text-white' : 'border border-[#555] text-gray-300'}`}>
                         {c.role === 'user' ? (user?.name?.charAt(0) || 'U') : <Bot size={20} strokeWidth={2} />}
                       </div>
-                      
-                      {/* Chat Bubble */}
                       <div className={`text-sm md:text-base leading-relaxed min-w-0 ${c.role === 'user' ? 'bg-[#D31010] text-white p-5 md:p-6' : 'border border-[#333] bg-[#0F0F0F] text-gray-300 p-5 md:p-8'}`}>
                         <ReactMarkdown 
                            remarkPlugins={[remarkGfm]} 
@@ -689,7 +695,6 @@ function App() {
                           {renderText}
                         </ReactMarkdown>
                       </div>
-
                    </div>
                  </div>
                )})}
@@ -715,7 +720,7 @@ function App() {
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A] to-transparent pt-12 pb-6 px-4 md:px-12 z-20">
           <div className="max-w-5xl mx-auto w-full flex flex-col gap-3 relative">
             
-            {/* ✅ AGENT MENU */}
+            {/* AGENT MENU */}
             {showAgentMenu && (
               <div className="absolute bottom-[calc(100%+16px)] left-0 w-80 bg-[#111] border border-[#333] shadow-2xl z-50">
                 <div className="px-5 py-4 border-b border-[#333] flex justify-between items-center bg-[#0A0A0A]">
@@ -747,7 +752,7 @@ function App() {
                      <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">PORT OPEN</span>
                      <span className="text-xs text-white font-black uppercase tracking-wider">HARDWARE LINKED</span>
                    </div>
-                   <button onClick={disconnectHardware} className="ml-4 bg-[#D31010] text-white p-1.5 hover:bg-white hover:text-black transition-colors">
+                   <button onClick={disconnectHardware} onMouseEnter={(e) => handleMouseEnter(e, "SEVER LINK", "top")} onMouseLeave={handleMouseLeave} className="ml-4 bg-[#D31010] text-white p-1.5 hover:bg-white hover:text-black transition-colors">
                      <X size={14} strokeWidth={3} />
                    </button>
                  </div>
@@ -757,7 +762,7 @@ function App() {
                     {imagePreview && (
                       <div className="relative shrink-0 border border-[#333] bg-[#111] p-1">
                         <img src={imagePreview} alt="Preview" className="h-14 w-14 object-cover grayscale" />
-                        <button type="button" onClick={() => { setImagePreview(null); setImageBase64(null); }} className="absolute -top-3 -right-3 bg-[#D31010] text-white p-1.5 hover:bg-white hover:text-black transition-colors">
+                        <button type="button" onClick={() => { setImagePreview(null); setImageBase64(null); }} onMouseEnter={(e) => handleMouseEnter(e, "REMOVE VISUAL", "top")} onMouseLeave={handleMouseLeave} className="absolute -top-3 -right-3 bg-[#D31010] text-white p-1.5 hover:bg-white hover:text-black transition-colors">
                           <X size={12} strokeWidth={3} />
                         </button>
                       </div>
@@ -769,7 +774,7 @@ function App() {
                            <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">DATA ATTACHED</span>
                            <span className="text-xs text-white max-w-[150px] truncate font-black uppercase tracking-wider">{csvFile.name}</span>
                         </div>
-                        <button type="button" onClick={() => setCsvFile(null)} className="absolute -top-3 -right-3 bg-[#D31010] text-white p-1.5 hover:bg-white hover:text-black transition-colors">
+                        <button type="button" onClick={() => setCsvFile(null)} onMouseEnter={(e) => handleMouseEnter(e, "REMOVE DATA", "top")} onMouseLeave={handleMouseLeave} className="absolute -top-3 -right-3 bg-[#D31010] text-white p-1.5 hover:bg-white hover:text-black transition-colors">
                           <X size={12} strokeWidth={3} />
                         </button>
                       </div>
@@ -788,15 +793,15 @@ function App() {
             ) : (
               <form onSubmit={sendMessage} className="bg-[#0A0A0A] border border-[#444] p-1.5 flex items-center focus-within:border-white transition-colors">
                 
-                <button type="button" onClick={connectHardware} className={`p-4 transition-colors shrink-0 ${hardwarePort ? 'text-[#D31010]' : 'text-gray-500 hover:text-white'}`} title="Link Hardware">
+                <button type="button" onClick={connectHardware} onMouseEnter={(e) => handleMouseEnter(e, "LINK HARDWARE", "top")} onMouseLeave={handleMouseLeave} className={`p-4 transition-colors shrink-0 ${hardwarePort ? 'text-[#D31010]' : 'text-gray-500 hover:text-white'}`}>
                   <Usb size={22} strokeWidth={2} />
                 </button>
                 <div className="w-px h-6 bg-[#333]"></div>
-                <button type="button" onClick={() => csvInputRef.current?.click()} className="p-4 transition-colors text-gray-500 hover:text-white shrink-0" title="Upload CSV">
+                <button type="button" onClick={() => csvInputRef.current?.click()} onMouseEnter={(e) => handleMouseEnter(e, "ATTACH DATA FILE", "top")} onMouseLeave={handleMouseLeave} className="p-4 transition-colors text-gray-500 hover:text-white shrink-0">
                   <FileSpreadsheet size={22} strokeWidth={2} />
                 </button>
                 <input type="file" accept=".csv" ref={csvInputRef} onChange={handleCSVUpload} className="hidden" />
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="p-4 transition-colors text-gray-500 hover:text-white shrink-0" title="Upload Image">
+                <button type="button" onClick={() => fileInputRef.current?.click()} onMouseEnter={(e) => handleMouseEnter(e, "ATTACH VISUALS", "top")} onMouseLeave={handleMouseLeave} className="p-4 transition-colors text-gray-500 hover:text-white shrink-0">
                   <Paperclip size={22} strokeWidth={2} />
                 </button>
                 <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageUpload} className="hidden" />
@@ -809,7 +814,7 @@ function App() {
                   onChange={handleMessageChange}
                 />
                 
-                <button type="submit" disabled={!message.trim() && !imageBase64 && !csvFile} className={`px-8 py-4 uppercase font-black tracking-widest text-sm transition-colors shrink-0 ${(message.trim() || imageBase64 || csvFile) ? "bg-[#D31010] text-white hover:bg-white hover:text-black" : "bg-[#111] text-gray-600 border-l border-[#333]"}`}>
+                <button type="submit" disabled={!message.trim() && !imageBase64 && !csvFile} onMouseEnter={(e) => handleMouseEnter(e, "TRANSMIT", "top")} onMouseLeave={handleMouseLeave} className={`px-8 py-4 uppercase font-black tracking-widest text-sm transition-colors shrink-0 ${(message.trim() || imageBase64 || csvFile) ? "bg-[#D31010] text-white hover:bg-white hover:text-black" : "bg-[#111] text-gray-600 border-l border-[#333]"}`}>
                   SEND
                 </button>
               </form>
@@ -822,7 +827,7 @@ function App() {
       {isProjectModalOpen && (
         <div className="absolute inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-[#0A0A0A] border border-[#333] p-10 w-full max-w-md relative">
-            <div className="absolute top-4 right-4 text-[#D31010] font-black text-xl">X X</div>
+            <button onClick={() => setIsProjectModalOpen(false)} className="absolute top-4 right-4 text-[#D31010] font-black text-xl hover:text-white transition-colors">X X</button>
             <h3 className="text-2xl font-black text-white uppercase mb-8 tracking-tighter">NEW LABEL.</h3>
             <form onSubmit={handleCreateProject}>
               <label className="text-[10px] text-[#D31010] font-bold uppercase tracking-widest mb-2 block">Designation.</label>
