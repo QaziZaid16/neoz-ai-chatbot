@@ -2,10 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import Papa from "papaparse";
 import { 
   Menu, Settings, Bell, FileText, Share, Star, 
   Bot, Code, Lightbulb, Paperclip, Mic, Send, Bookmark, Wrench, DollarSign, 
-  HelpCircle, Plus, Trash2, Share2, X, Folder, FolderOpen, ChevronRight, LogOut, Mail, Lock, User
+  HelpCircle, Plus, Trash2, Share2, X, Folder, FolderOpen, ChevronRight, LogOut, Mail, Lock, User,
+  Copy, Check, MessageCircle, FileSpreadsheet 
 } from "lucide-react";
 
 const API_BASE_URL = "https://neoz-ai-chatbot.onrender.com";
@@ -30,8 +32,8 @@ function App() {
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   
-  // ✅ Responsive Sidebar State (Open by default on Desktop, Closed on Mobile)
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
+  const [tooltip, setTooltip] = useState({ show: false, text: "", top: 0, left: 0 });
   
   const urlParams = new URLSearchParams(window.location.search);
   const sharedChatId = urlParams.get('share');
@@ -40,16 +42,22 @@ function App() {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
 
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareLink, setShareLink] = useState("");
+  const [isCopied, setIsCopied] = useState(false);
+
+  // ✅ FILES STATE
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [mimeType, setMimeType] = useState(null);
+  const [csvFile, setCsvFile] = useState(null); // ✅ Naya CSV File Preview State
   
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const csvInputRef = useRef(null);
 
   const activeChat = chats.find(c => c._id === activeChatId) || chats.find(c => c._id === "temp") || null;
 
-  // ✅ Auto-close sidebar on mobile when window resizes
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) setIsSidebarOpen(false);
@@ -58,6 +66,21 @@ function App() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  const handleMouseEnter = (e, text) => {
+    if (isSidebarOpen || window.innerWidth < 768) return; 
+    const rect = e.currentTarget.getBoundingClientRect();
+    setTooltip({
+      show: true,
+      text: text,
+      top: rect.top + (rect.height / 2),
+      left: rect.right + 12
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTooltip({ show: false, text: "", top: 0, left: 0 });
+  };
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -134,13 +157,20 @@ function App() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeChat?.messages, isTyping]);
 
-  const copyShareLink = (id) => {
-    if(id === "temp") return alert("Pehle message bhej kar chat start karo, phir share kar sakte ho!");
-    navigator.clipboard.writeText(`${window.location.origin}/?share=${id}`);
-    alert("Shareable Link Copied! 🚀");
+  const openShareModal = (id) => {
+    if(id === "temp") return alert("Please start the conversation before sharing.");
+    const link = `${window.location.origin}/?share=${id}`;
+    setShareLink(link);
+    setIsShareModalOpen(true);
+    setIsCopied(false);
   };
 
-  // ✅ MOBILE UX: Helper to select chat and auto-close sidebar on mobile
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareLink);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000); 
+  };
+
   const selectChatMobileFriendly = (id) => {
     setActiveChatId(id);
     if (window.innerWidth < 768) setIsSidebarOpen(false);
@@ -152,7 +182,7 @@ function App() {
     setChats([newChat, ...filteredChats]);
     selectChatMobileFriendly("temp");
     if(projectId) setActiveProjectId(projectId);
-    clearImage();
+    clearAttachments();
   };
 
   const handleCreateProject = async (e) => {
@@ -190,31 +220,64 @@ function App() {
     reader.readAsDataURL(file);
   };
 
-  const clearImage = () => {
+  // ✅ UPDATED CSV UPLOAD (Ab chat me text paste nahi hoga, sirf preview pill aayega)
+  const handleCSVUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        setCsvFile({
+          name: file.name,
+          data: JSON.stringify(results.data, null, 2)
+        });
+      },
+      error: function(err) {
+        alert("Failed to parse CSV file: " + err.message);
+      }
+    });
+
+    if (csvInputRef.current) csvInputRef.current.value = "";
+  };
+
+  const clearAttachments = () => {
     setImagePreview(null);
     setImageBase64(null);
     setMimeType(null);
+    setCsvFile(null); // ✅ CSV preview clear karne ke liye
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (csvInputRef.current) csvInputRef.current.value = "";
   };
 
   const sendMessage = async (e) => {
     if (e) e.preventDefault();
-    if (!message.trim() && !imageBase64) return;
+    
+    // Check if either message is typed OR an attachment exists
+    if (!message.trim() && !imageBase64 && !csvFile) return;
 
-    const userMsg = message;
+    const baseMsg = message.trim();
+    let payloadMsg = baseMsg;
+    
+    // Agar CSV file hai, toh backend ke liye invisible format banayenge
+    if (csvFile) {
+      payloadMsg = `[Data File Attached: ${csvFile.name}]\n\n\`\`\`json\n${csvFile.data}\n\`\`\`\n\nTask: ${baseMsg || "Analyze this data."}`;
+    }
+
     const currentBase64 = imageBase64;
     const currentMimeType = mimeType;
     const currentProjectId = activeChat?.projectId || null;
     
     setMessage("");
-    clearImage(); 
+    clearAttachments(); // ✅ Send ke baad preview clear kar do
 
     setChats(prevChats => prevChats.map(chat => {
       if (chat._id === activeChatId) {
-        const visualMsg = currentBase64 ? `[Image Attached] 🖼️\n${userMsg}` : userMsg;
+        const visualMsg = currentBase64 ? `[Image Attached] 🖼️\n${payloadMsg}` : payloadMsg;
         return {
           ...chat,
-          title: chat.messages.length === 0 ? (userMsg.substring(0, 25) || "Image Analysis") : chat.title,
+          title: chat.messages.length === 0 ? (baseMsg.substring(0, 25) || "Data Analysis") : chat.title,
           messages: [...chat.messages, { role: "user", text: visualMsg }]
         };
       }
@@ -225,7 +288,7 @@ function App() {
 
     try {
       const res = await axios.post(`${API_BASE_URL}/chat`, { 
-        message: userMsg, 
+        message: payloadMsg, 
         chatId: activeChatId === "temp" ? null : activeChatId,
         projectId: currentProjectId,
         imageBase64: currentBase64,
@@ -255,9 +318,6 @@ function App() {
   const projectChats = chats.filter(c => c.projectId !== null && c._id !== "temp");
   const standaloneChats = chats.filter(c => c.projectId === null && c._id !== "temp");
 
-  // ==========================================
-  // 🟢 RENDER: AUTHENTICATION SCREEN (RESPONSIVE)
-  // ==========================================
   if (!token && !isSharedView) {
     return (
       <div className="min-h-screen w-screen bg-[#090A0F] text-[#EDEDED] flex items-center justify-center relative overflow-hidden px-4 py-8">
@@ -329,13 +389,19 @@ function App() {
     );
   }
 
-  // ==========================================
-  // 🟢 RENDER: MAIN DASHBOARD (RESPONSIVE)
-  // ==========================================
   return (
     <div className="h-screen w-screen bg-[#090A0F] text-[#EDEDED] flex overflow-hidden relative">
       
-      {/* ✅ MOBILE OVERLAY (Darkens background when sidebar opens on phone) */}
+      {tooltip.show && (
+        <div 
+          className="fixed z-[100] px-3 py-2 bg-[#13151A] border border-white/10 text-white text-xs font-medium rounded-lg shadow-2xl pointer-events-none whitespace-nowrap"
+          style={{ top: tooltip.top, left: tooltip.left, transform: 'translateY(-50%)' }}
+        >
+          {tooltip.text}
+          <div className="absolute top-1/2 -left-1 w-2 h-2 bg-[#13151A] border-l border-b border-white/10 rotate-45 -translate-y-1/2"></div>
+        </div>
+      )}
+
       {!isSharedView && isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden transition-opacity duration-300" 
@@ -343,53 +409,78 @@ function App() {
         />
       )}
 
-      {/* 1. LEFT SIDEBAR (RESPONSIVE) */}
       {!isSharedView && (
-        <div className={`fixed md:relative z-40 h-full transition-all duration-300 ease-in-out overflow-hidden ${isSidebarOpen ? 'translate-x-0 w-[85vw] sm:w-[320px] opacity-100' : '-translate-x-full md:translate-x-0 md:w-0 md:opacity-0'} p-2 md:pl-4 md:py-4`}>
-          <div className="bg-[#13151A]/90 backdrop-blur-xl border border-white/5 flex flex-col h-full rounded-[24px] md:rounded-[32px] p-4 md:p-5 shadow-2xl">
+        <div className={`fixed md:relative z-40 h-full transition-all duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0 w-[85vw] sm:w-[320px]' : '-translate-x-full md:translate-x-0 md:w-[96px]'} p-2 md:pl-4 md:py-4 shrink-0`}>
+          <div className={`bg-[#13151A]/90 backdrop-blur-xl border border-white/5 flex flex-col h-full rounded-[24px] md:rounded-[32px] shadow-2xl transition-all duration-300 ${isSidebarOpen ? 'p-4 md:p-5' : 'p-4 md:py-6 md:px-3 items-center'}`}>
             
-            <div className="flex items-center justify-between mb-6 md:mb-8 px-1 md:px-2 mt-1 md:mt-2">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 md:w-7 md:h-7 bg-gradient-to-br from-[#D4AF37] to-[#A88728] rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(212,175,55,0.2)]">
-                  <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-[#090A0F] rounded-sm rotate-45"></div>
+            <div className={`flex w-full items-center ${isSidebarOpen ? 'justify-between' : 'justify-center flex-col gap-5'} mb-6 md:mb-8 mt-1`}>
+              <div 
+                className="flex items-center gap-3 cursor-pointer"
+                onMouseEnter={(e) => handleMouseEnter(e, "NEO-Z Dashboard")} 
+                onMouseLeave={handleMouseLeave}
+              >
+                <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-[#D4AF37] to-[#A88728] rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(212,175,55,0.2)] shrink-0">
+                  <div className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 bg-[#090A0F] rounded-sm rotate-45"></div>
                 </div>
-                <h2 className="text-white font-display font-bold text-lg md:text-xl tracking-tight">NEO-Z</h2>
+                {isSidebarOpen && <h2 className="text-white font-display font-bold text-lg md:text-xl tracking-tight">NEO-Z</h2>}
               </div>
-              {/* Close Button on Mobile / Retract on Desktop */}
-              <button onClick={() => setIsSidebarOpen(false)} className="text-[#8B949E] hover:text-white transition-colors cursor-pointer p-1">
+              <button 
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+                className="text-[#8B949E] hover:text-white transition-colors cursor-pointer p-1 rounded-md hover:bg-white/5"
+                onMouseEnter={(e) => handleMouseEnter(e, isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar")} 
+                onMouseLeave={handleMouseLeave}
+              >
                 <X size={20} strokeWidth={1.5} className="md:hidden" />
                 <Menu size={20} strokeWidth={1.5} className="hidden md:block" />
               </button>
             </div>
 
-            <button onClick={() => createNewChat(null)} className="w-full bg-white/5 border border-white/10 text-white font-medium py-3 rounded-xl md:rounded-2xl flex items-center justify-center gap-2 mb-4 md:mb-6 hover:bg-white/10 transition-all text-sm md:text-base">
-              <Plus size={16} strokeWidth={2} className="text-[#D4AF37]" /> New Conversation
+            <button 
+              onClick={() => createNewChat(null)} 
+              onMouseEnter={(e) => handleMouseEnter(e, "New Conversation")} 
+              onMouseLeave={handleMouseLeave}
+              className={`w-full bg-white/5 border border-white/10 text-white font-medium ${isSidebarOpen ? 'py-3 rounded-xl md:rounded-2xl flex items-center justify-center gap-2' : 'p-3 rounded-xl md:rounded-2xl flex justify-center'} mb-4 md:mb-6 hover:bg-white/10 transition-all text-sm md:text-base shrink-0`}
+            >
+              <Plus size={isSidebarOpen ? 16 : 20} strokeWidth={2} className="text-[#D4AF37]" /> 
+              {isSidebarOpen && <span>New Conversation</span>}
             </button>
 
-            <div className="flex-1 overflow-y-auto pr-1 md:pr-2 scrollbar-hide space-y-4 md:space-y-6">
+            <div className="flex-1 w-full overflow-y-auto overflow-x-hidden scrollbar-hide space-y-4 md:space-y-6">
               
-              {/* WORKSPACES */}
-              <div>
-                <div className="flex items-center justify-between px-2 mb-2 md:mb-3">
-                  <p className="text-[9px] md:text-[10px] text-[#8B949E] font-bold uppercase tracking-widest">Workspaces</p>
-                  <button onClick={() => setIsProjectModalOpen(true)} className="text-[#8B949E] hover:text-[#D4AF37] transition-colors p-1"><Plus size={14}/></button>
-                </div>
-                <div className="space-y-1">
+              <div className="w-full flex flex-col items-center md:items-stretch">
+                {isSidebarOpen ? (
+                  <div className="flex items-center justify-between px-2 mb-2 md:mb-3">
+                    <p className="text-[9px] md:text-[10px] text-[#8B949E] font-bold uppercase tracking-widest">Workspaces</p>
+                    <button onClick={() => setIsProjectModalOpen(true)} className="text-[#8B949E] hover:text-[#D4AF37] transition-colors p-1"><Plus size={14}/></button>
+                  </div>
+                ) : (
+                   <div className="w-8 h-[1px] bg-white/10 mb-4 rounded-full" />
+                )}
+                
+                <div className="space-y-1 w-full flex flex-col items-center md:items-stretch">
                   {projects.map(proj => (
-                    <div key={proj._id} className="flex flex-col">
-                      <div onClick={() => setActiveProjectId(activeProjectId === proj._id ? null : proj._id)} className={`flex items-center gap-2 md:gap-3 px-3 py-2 md:py-2.5 rounded-lg md:rounded-xl cursor-pointer transition-all ${activeProjectId === proj._id ? "bg-white/10 text-white shadow-inner" : "text-[#8B949E] hover:bg-white/5 hover:text-white"}`}>
-                        {activeProjectId === proj._id ? <FolderOpen size={14} strokeWidth={1.5} className="text-[#D4AF37]" /> : <Folder size={14} strokeWidth={1.5} />}
-                        <span className="font-medium text-xs md:text-sm truncate flex-1">{proj.name}</span>
-                        <ChevronRight size={12} className={`transition-transform opacity-50 ${activeProjectId === proj._id ? "rotate-90" : ""}`} />
+                    <div key={proj._id} className="flex flex-col w-full">
+                      <div 
+                        onClick={() => {
+                          setActiveProjectId(activeProjectId === proj._id ? null : proj._id);
+                          if (!isSidebarOpen && window.innerWidth >= 768) setIsSidebarOpen(true);
+                        }} 
+                        onMouseEnter={(e) => handleMouseEnter(e, proj.name)} 
+                        onMouseLeave={handleMouseLeave}
+                        className={`flex items-center ${isSidebarOpen ? 'gap-2 md:gap-3 px-3 py-2 md:py-2.5 justify-start' : 'justify-center p-2.5 mx-auto'} w-full rounded-lg md:rounded-xl cursor-pointer transition-all ${activeProjectId === proj._id ? "bg-white/10 text-white shadow-inner" : "text-[#8B949E] hover:bg-white/5 hover:text-white"}`}
+                      >
+                        {activeProjectId === proj._id ? <FolderOpen size={isSidebarOpen ? 14 : 18} strokeWidth={1.5} className="text-[#D4AF37] shrink-0" /> : <Folder size={isSidebarOpen ? 14 : 18} strokeWidth={1.5} className="shrink-0" />}
+                        {isSidebarOpen && <span className="font-medium text-xs md:text-sm truncate flex-1">{proj.name}</span>}
+                        {isSidebarOpen && <ChevronRight size={12} className={`transition-transform opacity-50 shrink-0 ${activeProjectId === proj._id ? "rotate-90" : ""}`} />}
                       </div>
                       
-                      {activeProjectId === proj._id && (
-                        <div className="ml-4 md:ml-5 border-l border-white/10 pl-2 md:pl-3 mt-1 space-y-1 py-1">
+                      {isSidebarOpen && activeProjectId === proj._id && (
+                        <div className="ml-4 md:ml-5 border-l border-white/10 pl-2 md:pl-3 mt-1 space-y-1 py-1 w-full">
                           {projectChats.filter(c => c.projectId === proj._id).map(chat => (
                             <div key={chat._id} onClick={() => selectChatMobileFriendly(chat._id)} className={`group flex items-center justify-between text-[11px] md:text-xs px-2 md:px-3 py-1.5 md:py-2 rounded-md md:rounded-lg cursor-pointer transition-all ${activeChatId === chat._id ? "text-white bg-[#D4AF37]/10" : "text-[#8B949E] hover:text-white hover:bg-white/5"}`}>
-                              <span className="truncate font-medium">{chat.title}</span>
-                              <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
-                                 <button onClick={(e) => { e.stopPropagation(); copyShareLink(chat._id); }} className="hover:text-blue-400 p-1"><Share2 size={12} /></button>
+                              <span className="truncate font-medium pr-2">{chat.title}</span>
+                              <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0">
+                                 <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} className="hover:text-blue-400 p-1"><Share2 size={12} /></button>
                                  <button onClick={(e) => deleteChat(e, chat._id)} className="hover:text-red-400 p-1"><Trash2 size={12} /></button>
                               </div>
                             </div>
@@ -402,20 +493,31 @@ function App() {
                 </div>
               </div>
 
-              {/* RECENT CHATS */}
-              <div>
-                <p className="text-[9px] md:text-[10px] text-[#8B949E] font-bold uppercase tracking-widest mb-2 md:mb-3 px-2">Recent Threads</p>
-                <div className="space-y-1">
+              <div className="w-full flex flex-col items-center md:items-stretch">
+                {isSidebarOpen ? (
+                  <p className="text-[9px] md:text-[10px] text-[#8B949E] font-bold uppercase tracking-widest mb-2 md:mb-3 px-2">Recent Threads</p>
+                ) : (
+                  <div className="w-8 h-[1px] bg-white/10 mt-2 mb-4 rounded-full" />
+                )}
+                <div className="space-y-1 w-full flex flex-col items-center md:items-stretch">
                   {standaloneChats.map(chat => (
-                    <div key={chat._id} onClick={() => selectChatMobileFriendly(chat._id)} className={`group flex items-center justify-between text-xs md:text-sm px-3 py-2.5 md:py-3 rounded-lg md:rounded-xl cursor-pointer transition-all ${activeChatId === chat._id ? "text-white bg-white/10 shadow-inner" : "text-[#8B949E] hover:text-white hover:bg-white/5"}`}>
-                      <div className="flex items-center gap-2 md:gap-3 truncate">
-                        <FileText size={14} strokeWidth={1.5} className={activeChatId === chat._id ? "text-[#D4AF37]" : "text-[#8B949E]"} />
-                        <span className="truncate font-medium">{chat.title}</span>
+                    <div 
+                      key={chat._id} 
+                      onClick={() => selectChatMobileFriendly(chat._id)} 
+                      onMouseEnter={(e) => handleMouseEnter(e, chat.title)} 
+                      onMouseLeave={handleMouseLeave}
+                      className={`group flex items-center ${isSidebarOpen ? 'justify-between px-3 py-2.5 md:py-3' : 'justify-center p-2.5 mx-auto'} w-full rounded-lg md:rounded-xl cursor-pointer transition-all ${activeChatId === chat._id ? "text-white bg-white/10 shadow-inner" : "text-[#8B949E] hover:text-white hover:bg-white/5"}`}
+                    >
+                      <div className={`flex items-center ${isSidebarOpen ? 'gap-2 md:gap-3 truncate' : 'justify-center'} w-full`}>
+                        <FileText size={isSidebarOpen ? 14 : 18} strokeWidth={1.5} className={`shrink-0 ${activeChatId === chat._id ? "text-[#D4AF37]" : "text-[#8B949E]"}`} />
+                        {isSidebarOpen && <span className="truncate font-medium">{chat.title}</span>}
                       </div>
-                      <div className={`flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity`}>
-                        <button onClick={(e) => { e.stopPropagation(); copyShareLink(chat._id); }} className="p-1 hover:text-blue-400 transition-all"><Share2 size={14} /></button>
-                        <button onClick={(e) => deleteChat(e, chat._id)} className="p-1 hover:text-red-400 transition-all"><Trash2 size={14} /></button>
-                      </div>
+                      {isSidebarOpen && (
+                        <div className={`flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0`}>
+                          <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} className="p-1 hover:text-blue-400 transition-all"><Share2 size={14} /></button>
+                          <button onClick={(e) => deleteChat(e, chat._id)} className="p-1 hover:text-red-400 transition-all"><Trash2 size={14} /></button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -423,31 +525,41 @@ function App() {
 
             </div>
 
-            {/* USER PROFILE */}
-            <div className="mt-2 md:mt-4 flex items-center gap-2 md:gap-3 px-2 md:px-3 pt-3 md:pt-4 border-t border-white/5 text-[#8B949E]">
-              <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#A88728] text-[#090A0F] flex items-center justify-center text-[10px] md:text-xs font-bold uppercase shrink-0 shadow-lg">
+            <div className={`w-full mt-2 md:mt-4 flex ${isSidebarOpen ? 'items-center gap-2 md:gap-3 px-2 md:px-3 pt-3 md:pt-4 border-t border-white/5' : 'flex-col items-center gap-4 pt-4 border-t border-white/5'} text-[#8B949E] shrink-0`}>
+              <div 
+                onMouseEnter={(e) => handleMouseEnter(e, user?.name || "Profile")} 
+                onMouseLeave={handleMouseLeave}
+                className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#A88728] text-[#090A0F] flex items-center justify-center text-[10px] md:text-xs font-bold uppercase shrink-0 shadow-lg cursor-pointer"
+              >
                 {user?.name?.charAt(0) || "Z"}
               </div>
-              <div className="flex flex-col flex-1 truncate">
-                <span className="text-white text-[11px] md:text-xs font-medium truncate">{user?.name || "User Zaid"}</span>
-                <span className="text-[9px] md:text-[10px] truncate opacity-60 font-light">{user?.email || "Pro Tier"}</span>
-              </div>
-              <button onClick={handleLogout} className="hover:text-red-400 p-1.5 md:p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer" title="Log Out">
-                <LogOut size={14} strokeWidth={1.5} />
+              
+              {isSidebarOpen && (
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className="text-white text-[11px] md:text-xs font-medium truncate">{user?.name || "User Zaid"}</span>
+                  <span className="text-[9px] md:text-[10px] truncate opacity-60 font-light">{user?.email || "Pro Tier"}</span>
+                </div>
+              )}
+
+              <button 
+                onClick={handleLogout} 
+                onMouseEnter={(e) => handleMouseEnter(e, "Log Out")} 
+                onMouseLeave={handleMouseLeave}
+                className="hover:text-red-400 p-1.5 md:p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer shrink-0" 
+              >
+                <LogOut size={isSidebarOpen ? 14 : 18} strokeWidth={1.5} />
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 2. MAIN CHAT AREA (RESPONSIVE) */}
       <div className="flex-1 flex flex-col relative min-w-0 transition-all duration-300">
         
-        {/* Header */}
         <div className="h-16 md:h-20 flex items-center justify-between px-4 md:px-8 lg:px-12 shrink-0 z-10 border-b border-white/5 md:border-none">
           <div className="flex items-center gap-2 md:gap-3 text-white max-w-[70%]">
-            {!isSharedView && (
-              <button onClick={() => setIsSidebarOpen(true)} className={`text-[#8B949E] hover:text-white transition-colors mr-1 cursor-pointer z-20 ${isSidebarOpen ? 'hidden' : 'block'}`}>
+            {!isSharedView && !isSidebarOpen && (
+              <button onClick={() => setIsSidebarOpen(true)} className="text-[#8B949E] hover:text-white transition-colors mr-1 cursor-pointer z-20 md:hidden">
                 <Menu size={20} strokeWidth={1.5} />
               </button>
             )}
@@ -457,14 +569,13 @@ function App() {
           
           <div className="flex items-center gap-2 md:gap-4 shrink-0">
              {!isSharedView && (
-               <button onClick={() => copyShareLink(activeChat?._id)} className="flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-medium text-[#D4AF37] hover:text-white px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-[#D4AF37]/30 hover:border-[#D4AF37] bg-[#D4AF37]/5 transition-all cursor-pointer">
+               <button onClick={() => openShareModal(activeChat?._id)} className="flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-medium text-[#D4AF37] hover:text-white px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-[#D4AF37]/30 hover:border-[#D4AF37] bg-[#D4AF37]/5 transition-all cursor-pointer">
                  <Share size={12} strokeWidth={1.5} /> <span className="hidden sm:inline">Share</span>
                </button>
              )}
           </div>
         </div>
 
-        {/* Chat Thread */}
         <div className="flex-1 overflow-y-auto scrollbar-hide relative px-4 md:px-8">
           {(!activeChat || activeChat.messages.length === 0) ? (
             <div className="h-full flex flex-col items-center justify-center p-4 md:p-6 mt-[-10vh]">
@@ -480,54 +591,106 @@ function App() {
             </div>
           ) : (
             <div className="py-6 md:py-10 space-y-6 md:space-y-10 max-w-3xl mx-auto w-full">
-               {activeChat.messages.map((c, i) => (
+               {activeChat.messages.map((c, i) => {
+                 
+                 // ✅ UI MAGIC: Hide raw JSON in chat bubble, but keep it for processing
+                 const renderText = c.text.includes("[Data File Attached:") 
+                    ? c.text.replace(/```json[\s\S]*?```/, "> 📎 **Data File Successfully Processed** *(Raw data hidden for a clean view)*")
+                    : c.text;
+
+                 return (
                  <div key={i} className={`flex flex-col ${c.role === "user" ? "items-end" : "items-start"} w-full`}>
-                   <div className="flex items-start gap-2 md:gap-4 max-w-[95%] md:max-w-[85%]">
+                   <div className="flex items-start gap-3 md:gap-4 max-w-[95%] md:max-w-[85%]">
                       {c.role !== 'user' && (
-                        <div className="w-6 h-6 md:w-8 md:h-8 rounded-full flex-shrink-0 flex items-center justify-center border border-white/10 bg-[#13151A] text-[#D4AF37] shadow-lg mt-1">
-                          <Bot size={14} strokeWidth={1.5} />
+                        <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center border border-white/10 bg-[#13151A] text-[#D4AF37] shadow-lg mt-1">
+                          <Bot size={16} strokeWidth={1.5} />
                         </div>
                       )}
                       
-                      <div className={`text-[14px] md:text-[15px] leading-relaxed ${c.role === 'user' ? 'bg-white/5 border border-white/10 px-4 py-3 md:px-5 md:py-3.5 rounded-2xl md:rounded-3xl rounded-tr-sm text-[#EDEDED]' : 'text-[#D4AF37]/90 font-light'}`}>
-                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
-                           p: ({node, ...props}) => <p className="mb-3 md:mb-4 last:mb-0 whitespace-pre-wrap break-words" {...props} />,
-                           strong: ({node, ...props}) => <strong className="font-semibold text-white" {...props} />,
-                           code: ({node, inline, children, ...props}) => !inline ? (
-                            <div className="w-[85vw] sm:w-full bg-[#13151A] border border-white/10 rounded-xl md:rounded-2xl overflow-hidden my-3 md:my-4 shadow-xl">
-                              <pre className="p-3 md:p-5 overflow-x-auto text-[#EDEDED] font-mono text-[12px] md:text-sm">{children}</pre>
-                            </div>
-                           ) : <code className="bg-white/10 px-1.5 py-0.5 rounded-md text-[#D4AF37] font-mono text-[11px] md:text-[13px] break-all" {...props}>{children}</code>
-                        }}>
-                          {c.text}
+                      <div className={`text-[15px] leading-relaxed min-w-0 ${c.role === 'user' ? 'bg-[#1A1D24] border border-white/5 px-5 py-3.5 rounded-[24px] rounded-tr-[4px] text-[#EDEDED] shadow-sm break-words' : 'text-[#D1D5DB] font-normal w-full'}`}>
+                        <ReactMarkdown 
+                           remarkPlugins={[remarkGfm]} 
+                           components={{
+                             p: ({node, ...props}) => <p className="mb-5 last:mb-0 leading-[1.8] text-[#E2E8F0]" {...props} />,
+                             strong: ({node, ...props}) => <strong className="font-semibold text-white" {...props} />,
+                             h1: ({node, ...props}) => <h1 className="text-2xl font-bold text-white mb-4 mt-6" {...props} />,
+                             h2: ({node, ...props}) => <h2 className="text-xl font-bold text-white mb-3 mt-5" {...props} />,
+                             h3: ({node, ...props}) => <h3 className="text-lg font-medium text-white mb-2 mt-4" {...props} />,
+                             ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-5 space-y-2 text-[#E2E8F0]" {...props} />,
+                             ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-5 space-y-2 text-[#E2E8F0]" {...props} />,
+                             li: ({node, ...props}) => <li className="leading-[1.8]" {...props} />,
+                             blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-[#D4AF37] pl-4 text-sm font-medium text-[#D4AF37]/90 mb-5 bg-[#D4AF37]/5 py-2 rounded-r-lg" {...props} />,
+                             code: ({node, inline, children, ...props}) => !inline ? (
+                              <div className="w-full bg-[#050505] border border-white/10 rounded-xl overflow-hidden my-6 shadow-2xl">
+                                <div className="bg-[#13151A] px-4 py-2.5 border-b border-white/5 flex items-center gap-2">
+                                  <div className="w-3 h-3 rounded-full bg-[#FF5F56]"></div>
+                                  <div className="w-3 h-3 rounded-full bg-[#FFBD2E]"></div>
+                                  <div className="w-3 h-3 rounded-full bg-[#27C93F]"></div>
+                                  <span className="text-[10px] text-[#8B949E] font-mono ml-2 uppercase tracking-widest">Code Snippet</span>
+                                </div>
+                                <pre className="p-5 overflow-x-auto text-[#A3B8CC] font-mono text-[13px] md:text-sm leading-loose max-h-80 overflow-y-auto">{children}</pre>
+                              </div>
+                             ) : <code className="bg-[#D4AF37]/10 px-1.5 py-0.5 rounded-md text-[#D4AF37] font-mono text-[12px] md:text-[13px]" {...props}>{children}</code>
+                           }}
+                        >
+                          {renderText}
                         </ReactMarkdown>
                       </div>
 
                       {c.role === 'user' && (
-                        <div className="w-6 h-6 md:w-8 md:h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-white/10 text-white font-medium text-[10px] md:text-xs mt-1">
+                        <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-[#D4AF37] to-[#A88728] text-[#090A0F] font-bold text-xs mt-1 shadow-lg">
                           {user?.name?.charAt(0) || 'U'}
                         </div>
                       )}
                    </div>
+
                  </div>
-               ))}
+               )})}
                {isTyping && (
                  <div className="flex items-center gap-3 md:gap-4 max-w-[85%]">
-                   <div className="w-6 h-6 md:w-8 md:h-8 rounded-full flex-shrink-0 flex items-center justify-center border border-white/10 bg-[#13151A] text-[#D4AF37] shadow-lg">
-                      <Bot size={14} strokeWidth={1.5} />
+                   <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center border border-white/10 bg-[#13151A] text-[#D4AF37] shadow-lg">
+                      <Bot size={16} strokeWidth={1.5} />
                    </div>
-                   <div className="text-[#D4AF37] text-[10px] md:text-xs font-medium tracking-widest uppercase animate-pulse">Analyzing...</div>
+                   <div className="text-[#D4AF37] text-xs font-medium tracking-widest uppercase animate-pulse">Analyzing...</div>
                  </div>
                )}
-               {/* Pad bottom area so messages aren't hidden behind the floating input */}
-               <div ref={chatEndRef} className="h-24 md:h-28" /> 
+               <div ref={chatEndRef} className="h-28 md:h-32" /> 
             </div>
           )}
         </div>
 
-        {/* Input Area (RESPONSIVE PILL) */}
+        {/* Input Area */}
         <div className="absolute bottom-4 md:bottom-6 left-0 right-0 px-2 md:px-4 pointer-events-none z-10">
-          <div className="max-w-3xl mx-auto w-full pointer-events-auto">
+          <div className="max-w-3xl mx-auto w-full pointer-events-auto flex flex-col gap-2">
+            
+            {/* ✅ FILE ATTACHMENTS PREVIEW PILLS (Just above the input box) */}
+            {(imagePreview || csvFile) && !isSharedView && (
+               <div className="flex items-center gap-3 ml-2 md:ml-4">
+                  
+                  {/* Image Preview */}
+                  {imagePreview && (
+                    <div className="relative shrink-0">
+                      <img src={imagePreview} alt="Preview" className="h-10 w-10 md:h-12 md:w-12 object-cover rounded-lg md:rounded-xl border border-white/20 shadow-lg" />
+                      <button type="button" onClick={() => { setImagePreview(null); setImageBase64(null); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:scale-110 transition-all shadow-md">
+                        <X size={10} strokeWidth={2} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* CSV File Preview */}
+                  {csvFile && (
+                    <div className="relative shrink-0 bg-[#1A1D24] border border-[#D4AF37]/30 px-3 py-2.5 md:px-4 md:py-3 rounded-lg md:rounded-xl flex items-center gap-2 shadow-lg">
+                      <FileSpreadsheet size={16} className="text-[#D4AF37]" />
+                      <span className="text-[11px] md:text-xs text-[#EDEDED] max-w-[100px] md:max-w-[150px] truncate font-medium">{csvFile.name}</span>
+                      <button type="button" onClick={() => setCsvFile(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:scale-110 transition-all shadow-md">
+                        <X size={10} strokeWidth={2} />
+                      </button>
+                    </div>
+                  )}
+
+               </div>
+            )}
+
             {isSharedView ? (
               <div className="bg-[#13151A]/90 backdrop-blur-2xl rounded-full border border-white/10 p-3 md:p-4 shadow-2xl flex items-center justify-between px-4 md:px-8">
                  <p className="text-[#8B949E] text-xs md:text-sm">Shared, read-only document.</p>
@@ -538,19 +701,15 @@ function App() {
             ) : (
               <form onSubmit={sendMessage} className="bg-[#13151A]/85 backdrop-blur-3xl rounded-[24px] md:rounded-[32px] border border-white/10 p-1.5 md:p-2 pl-3 md:pl-4 shadow-[0_10px_40px_rgba(0,0,0,0.6)] flex items-center focus-within:border-[#D4AF37]/50 transition-all">
                 
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="text-[#8B949E] hover:text-white transition-colors cursor-pointer p-1.5 md:p-2 bg-white/5 rounded-full shrink-0">
+                <button type="button" onClick={() => csvInputRef.current?.click()} className="text-[#8B949E] hover:text-[#D4AF37] transition-colors cursor-pointer p-1.5 md:p-2 hover:bg-white/5 rounded-full shrink-0" title="Upload CSV Data">
+                  <FileSpreadsheet size={16} strokeWidth={1.5} className="md:w-[18px] md:h-[18px]" />
+                </button>
+                <input type="file" accept=".csv" ref={csvInputRef} onChange={handleCSVUpload} className="hidden" />
+
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="text-[#8B949E] hover:text-white transition-colors cursor-pointer p-1.5 md:p-2 hover:bg-white/5 rounded-full shrink-0" title="Upload Image">
                   <Paperclip size={16} strokeWidth={1.5} className="md:w-[18px] md:h-[18px]" />
                 </button>
                 <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageUpload} className="hidden" />
-
-                {imagePreview && (
-                  <div className="relative ml-2 md:ml-3 shrink-0">
-                    <img src={imagePreview} alt="Preview" className="h-8 w-8 md:h-10 md:w-10 object-cover rounded-md md:rounded-lg border border-white/20" />
-                    <button type="button" onClick={clearImage} className="absolute -top-1.5 -right-1.5 md:-top-2 md:-right-2 bg-red-500 text-white rounded-full p-0.5">
-                      <X size={10} />
-                    </button>
-                  </div>
-                )}
 
                 <input
                   className="flex-1 bg-transparent text-[#EDEDED] px-3 md:px-4 py-2.5 md:py-3 outline-none placeholder:text-[#8B949E] text-sm md:text-[15px] font-light min-w-0"
@@ -559,17 +718,18 @@ function App() {
                   onChange={(e) => setMessage(e.target.value)}
                 />
                 
-                <button type="submit" disabled={!message.trim() && !imageBase64} className={`w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all cursor-pointer shrink-0 ml-1 md:ml-2 ${(message.trim() || imageBase64) ? "bg-[#D4AF37] text-[#090A0F] shadow-[0_0_15px_rgba(212,175,55,0.4)] hover:scale-105" : "bg-white/5 text-[#8B949E]"}`}>
+                {/* Send Button */}
+                <button type="submit" disabled={!message.trim() && !imageBase64 && !csvFile} className={`w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all cursor-pointer shrink-0 ml-1 md:ml-2 ${(message.trim() || imageBase64 || csvFile) ? "bg-[#D4AF37] text-[#090A0F] shadow-[0_0_15px_rgba(212,175,55,0.4)] hover:scale-105" : "bg-white/5 text-[#8B949E]"}`}>
                   <Send size={16} strokeWidth={2} className="ml-0.5 md:ml-1 md:w-[18px] md:h-[18px]" />
                 </button>
               </form>
             )}
-            <p className="text-[8px] md:text-[10px] text-center text-[#8B949E] mt-2 md:mt-3 font-medium tracking-widest uppercase opacity-50">Powered by Gemini Engine</p>
+            <p className="text-[8px] md:text-[10px] text-center text-[#8B949E] mt-1 md:mt-2 font-medium tracking-widest uppercase opacity-50">Powered by Gemini Engine</p>
           </div>
         </div>
       </div>
 
-      {/* MODAL (RESPONSIVE) */}
+      {/* MODALS */}
       {isProjectModalOpen && (
         <div className="absolute inset-0 bg-[#090A0F]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#13151A] border border-white/10 p-6 md:p-8 rounded-[24px] md:rounded-[32px] w-full max-w-sm shadow-2xl">
@@ -588,6 +748,43 @@ function App() {
                 <button type="submit" disabled={!newProjectName.trim()} className="px-5 md:px-6 py-2 md:py-3 bg-[#D4AF37] text-[#090A0F] font-bold text-xs md:text-sm rounded-lg md:rounded-xl hover:opacity-90 transition-all disabled:opacity-50">Create</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {isShareModalOpen && (
+        <div className="absolute inset-0 bg-[#090A0F]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#13151A] border border-white/10 p-6 md:p-8 rounded-[24px] md:rounded-[32px] w-full max-w-sm shadow-2xl relative">
+            <button onClick={() => setIsShareModalOpen(false)} className="absolute top-6 right-6 text-[#8B949E] hover:text-white transition-colors">
+              <X size={20} strokeWidth={1.5} />
+            </button>
+            
+            <h3 className="text-lg md:text-xl font-display font-medium text-white mb-2">Share Link</h3>
+            <p className="text-[#8B949E] text-xs md:text-sm mb-6 font-light">Anyone with this link will be able to view this conversation.</p>
+            
+            <div className="flex items-center gap-3 mb-6">
+              <a href={`https://api.whatsapp.com/send?text=Check%20out%20this%20conversation%20on%20NEO-Z:%20${encodeURIComponent(shareLink)}`} target="_blank" rel="noopener noreferrer" className="w-12 h-12 rounded-full bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366] hover:text-white flex items-center justify-center transition-all">
+                <MessageCircle size={20} strokeWidth={1.5} />
+              </a>
+              <a href={`mailto:?subject=NEO-Z%20Conversation&body=Check%20out%20this%20AI%20conversation:%20${encodeURIComponent(shareLink)}`} className="w-12 h-12 rounded-full bg-white/5 text-white hover:bg-white/10 flex items-center justify-center transition-all">
+                <Mail size={20} strokeWidth={1.5} />
+              </a>
+            </div>
+
+            <div className="flex items-center bg-[#090A0F] border border-white/10 p-1.5 rounded-xl md:rounded-2xl">
+              <input 
+                type="text" 
+                readOnly 
+                value={shareLink} 
+                className="flex-1 bg-transparent text-[#EDEDED] px-3 py-2 text-xs md:text-sm outline-none font-mono tracking-tight truncate"
+              />
+              <button 
+                onClick={handleCopyLink} 
+                className={`p-2.5 rounded-lg md:rounded-xl transition-all flex items-center justify-center shrink-0 ${isCopied ? 'bg-green-500/20 text-green-400' : 'bg-[#D4AF37] text-[#090A0F] hover:opacity-90'}`}
+              >
+                {isCopied ? <Check size={16} strokeWidth={2} /> : <Copy size={16} strokeWidth={1.5} />}
+              </button>
+            </div>
           </div>
         </div>
       )}
