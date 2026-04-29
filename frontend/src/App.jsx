@@ -33,7 +33,6 @@ function App() {
   const [authError, setAuthError] = useState("");
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
-  // ✅ NEW: CUSTOM NOTIFICATION STATE (Replaces alerts)
   const [notification, setNotification] = useState({ show: false, message: "" });
 
   const [chats, setChats] = useState([]);
@@ -62,6 +61,11 @@ function App() {
   const [csvFile, setCsvFile] = useState(null); 
   const [hardwarePort, setHardwarePort] = useState(null); 
   
+  // ✅ NEW VOICE RECORDING STATES
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+
   const [showAgentMenu, setShowAgentMenu] = useState(false);
   const [agentSearch, setAgentSearch] = useState("");
 
@@ -81,7 +85,6 @@ function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // ✅ HELPER: Show Custom Notification
   const showNotification = (msg) => {
     setNotification({ show: true, message: msg });
     setTimeout(() => setNotification({ show: false, message: "" }), 3500);
@@ -107,7 +110,6 @@ function App() {
     setTooltip({ show: false, text: "", top: 0, left: 0, position: "right" });
   };
 
-  // ✅ FIXED: AUTO-LOGIN IMPLEMENTED
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
     setAuthError("");
@@ -115,25 +117,20 @@ function App() {
     try {
       const endpoint = authMode === "login" ? "/login" : "/signup";
       let res = await axios.post(`${API_BASE_URL}${endpoint}`, authForm);
-      
       let newToken = res.data.token;
       let userData = res.data.user;
 
-      // Agar signup tha aur backend ne direct token nahi diya, toh auto-login API call karo
       if (authMode === "signup" && !newToken) {
          const loginRes = await axios.post(`${API_BASE_URL}/login`, { email: authForm.email, password: authForm.password });
          newToken = loginRes.data.token;
          userData = loginRes.data.user;
       }
-
       setToken(newToken);
       setUser(userData);
       localStorage.setItem("token", newToken);
       localStorage.setItem("user", JSON.stringify(userData));
       axios.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
-      
       showNotification(authMode === "signup" ? "SIGNAL CREATED. WELCOME." : "NODE CONNECTED.");
-
     } catch (err) {
       setAuthError(err.response?.data?.error || "AUTHENTICATION FAILED.");
     } finally {
@@ -161,7 +158,7 @@ function App() {
           setChats([res.data]);
           setActiveChatId(res.data._id);
         } catch (err) {
-          showNotification("LINK EXPIRED OR INVALID."); // ✅ Custom Alert
+          showNotification("LINK EXPIRED OR INVALID."); 
           setTimeout(() => window.location.href = "/", 2000);
         }
         return; 
@@ -210,7 +207,7 @@ function App() {
   };
 
   const openShareModal = (id) => {
-    if(id === "temp") return showNotification("START CONVERSATION FIRST."); // ✅ Custom Alert
+    if(id === "temp") return showNotification("START CONVERSATION FIRST."); 
     const link = `${window.location.origin}/?share=${id}`;
     setShareLink(link);
     setIsShareModalOpen(true);
@@ -283,7 +280,7 @@ function App() {
         setCsvFile({ name: file.name, data: JSON.stringify(results.data, null, 2) });
         showNotification("DATA ATTACHED.");
       },
-      error: function(err) { showNotification("PARSE FAILED: " + err.message); } // ✅ Custom Alert
+      error: function(err) { showNotification("PARSE FAILED: " + err.message); } 
     });
     if (csvInputRef.current) csvInputRef.current.value = "";
   };
@@ -299,7 +296,7 @@ function App() {
 
   const connectHardware = async () => {
     if (!("serial" in navigator)) {
-      showNotification("WEB SERIAL API NOT SUPPORTED."); // ✅ Custom Alert
+      showNotification("WEB SERIAL API NOT SUPPORTED."); 
       return;
     }
     try {
@@ -318,6 +315,52 @@ function App() {
   const disconnectHardware = async () => {
     if (hardwarePort) {
       try { await hardwarePort.close(); setHardwarePort(null); showNotification("HARDWARE DISCONNECTED."); } catch (err) {}
+    }
+  };
+
+  // ✅ NEW VOICE RECORDING LOGIC TO CONNECT WITH PYTHON MICROSERVICE
+  const toggleRecording = async () => {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      mediaRecorderRef.current.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const formData = new FormData();
+        formData.append("audio_file", audioBlob, "recording.webm");
+
+        showNotification("ANALYZING VOICE DATA...");
+        try {
+          const res = await axios.post("http://127.0.0.1:8000/api/voice-to-text", formData);
+          if (res.data.success) {
+            setMessage(prev => (prev + " " + res.data.text).trim());
+            showNotification("VOICE TRANSCRIBED.");
+            inputRef.current?.focus();
+          } else {
+            showNotification("PROCESSING ERROR. SEE CONSOLE.");
+            console.error("Python Server Error:", res.data.error);
+          }
+        } catch (err) {
+          showNotification("PYTHON MICROSERVICE OFFLINE.");
+        }
+      };
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+      showNotification("RECORDING... CLICK MIC TO STOP.");
+    } catch (err) {
+      showNotification("MICROPHONE ACCESS DENIED.");
     }
   };
 
@@ -402,13 +445,9 @@ function App() {
 
   const projectChats = chats.filter(c => c.projectId !== null && c._id !== "temp");
   const standaloneChats = chats.filter(c => c.projectId === null && c._id !== "temp");
-
   const today = new Date();
   const dateString = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
 
-  // ==========================================
-  // GLOBAL NOTIFICATION COMPONENT
-  // ==========================================
   const NotificationToast = () => {
     if (!notification.show) return null;
     return (
@@ -419,9 +458,6 @@ function App() {
     );
   };
 
-  // ==========================================
-  // AUTHENTICATION SCREEN (DARKLANDS)
-  // ==========================================
   if (!token && !isSharedView) {
     return (
       <div className="min-h-screen w-screen bg-[#111111] text-[#E5E5E5] flex items-center justify-center relative overflow-hidden px-4 py-8 font-sans selection:bg-[#D31010] selection:text-white">
@@ -473,26 +509,15 @@ function App() {
     );
   }
 
-  // ==========================================
-  // MAIN APP SCREEN (DARKLANDS)
-  // ==========================================
   return (
     <div className="h-screen w-screen bg-[#111111] text-[#E5E5E5] flex overflow-hidden relative font-sans selection:bg-[#D31010] selection:text-white">
-      
       <div className="absolute inset-0 opacity-[0.02] pointer-events-none mix-blend-overlay z-0" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")'}}></div>
 
-      {/* RENDER CUSTOM NOTIFICATIONS & TOOLTIPS */}
       <NotificationToast />
 
       {tooltip.show && (
         <div className="fixed z-[100] px-3 py-1.5 bg-[#D31010] text-white text-[10px] font-black uppercase tracking-widest rounded-none pointer-events-none whitespace-nowrap shadow-[4px_4px_0px_rgba(0,0,0,0.5)] border border-[#555]"
-          style={{ 
-            top: tooltip.top, 
-            left: tooltip.left, 
-            transform: tooltip.position === "top" ? 'translate(-50%, -100%)' : 
-                       tooltip.position === "bottom" ? 'translate(-50%, 0)' : 
-                       'translateY(-50%)' 
-          }}>
+          style={{ top: tooltip.top, left: tooltip.left, transform: tooltip.position === "top" ? 'translate(-50%, -100%)' : tooltip.position === "bottom" ? 'translate(-50%, 0)' : 'translateY(-50%)' }}>
           {tooltip.text}
         </div>
       )}
@@ -501,11 +526,9 @@ function App() {
         <div className="fixed inset-0 bg-black/80 z-30 md:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
       )}
 
-      {/* ✅ LEFT SIDEBAR */}
       {!isSharedView && (
         <div className={`fixed md:relative z-40 h-full transition-all duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0 w-[85vw] sm:w-[320px]' : '-translate-x-full md:translate-x-0 md:w-[80px]'} bg-[#0A0A0A] border-r border-[#333] shrink-0`}>
           <div className="flex flex-col h-full p-4 md:p-6">
-            
             <div className={`flex w-full items-center ${isSidebarOpen ? 'justify-between' : 'justify-center flex-col gap-6'} mb-8 pb-6 border-b border-[#333]`}>
               <div onMouseEnter={(e) => handleMouseEnter(e, "SYSTEM DASHBOARD")} onMouseLeave={handleMouseLeave} className="flex items-center gap-3 cursor-pointer">
                 <div className="text-[#D31010] font-black text-2xl leading-none tracking-tighter">N.</div>
@@ -530,7 +553,6 @@ function App() {
                     <button onClick={() => setIsProjectModalOpen(true)} onMouseEnter={(e) => handleMouseEnter(e, "CREATE LABEL")} onMouseLeave={handleMouseLeave} className="text-gray-500 hover:text-[#D31010]"><Plus size={14} strokeWidth={3}/></button>
                   </div>
                 ) : ( <div className="w-full h-px bg-[#333] mb-6" /> )}
-                
                 <div className="space-y-1 w-full flex flex-col items-center md:items-stretch">
                   {projects.map(proj => (
                     <div key={proj._id} className="flex flex-col w-full">
@@ -539,7 +561,6 @@ function App() {
                         {isSidebarOpen && <span className="font-bold text-sm tracking-wide truncate flex-1 uppercase">{proj.name}</span>}
                         {isSidebarOpen && <ChevronRight size={14} strokeWidth={2.5} className={`transition-transform shrink-0 ${activeProjectId === proj._id ? "rotate-90 text-[#D31010]" : ""}`} />}
                       </div>
-                      
                       {isSidebarOpen && activeProjectId === proj._id && (
                         <div className="ml-2 border-l border-[#333] pl-3 mt-1 space-y-1 py-2 w-full">
                           {projectChats.filter(c => c.projectId === proj._id).map(chat => (
@@ -604,8 +625,6 @@ function App() {
 
       {/* ✅ MAIN CHAT AREA */}
       <div className="flex-1 flex flex-col relative min-w-0 z-10">
-        
-        {/* HEADER */}
         <div className="h-16 md:h-24 flex items-center justify-between px-6 md:px-12 shrink-0 border-b border-[#333] bg-[#0A0A0A]">
           <div className="flex items-center gap-4 text-white max-w-[70%]">
             {!isSharedView && !isSidebarOpen && (
@@ -633,7 +652,6 @@ function App() {
           </div>
         </div>
 
-        {/* CHAT MESSAGES */}
         <div className="flex-1 overflow-y-auto scrollbar-hide relative px-4 md:px-12">
           {(!activeChat || activeChat.messages.length === 0) ? (
             <div className="h-full flex flex-col items-start justify-center p-4 max-w-4xl mx-auto w-full mt-[-5vh]">
@@ -720,7 +738,6 @@ function App() {
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A] to-transparent pt-12 pb-6 px-4 md:px-12 z-20">
           <div className="max-w-5xl mx-auto w-full flex flex-col gap-3 relative">
             
-            {/* AGENT MENU */}
             {showAgentMenu && (
               <div className="absolute bottom-[calc(100%+16px)] left-0 w-80 bg-[#111] border border-[#333] shadow-2xl z-50">
                 <div className="px-5 py-4 border-b border-[#333] flex justify-between items-center bg-[#0A0A0A]">
@@ -743,7 +760,6 @@ function App() {
               </div>
             )}
 
-            {/* PREVIEW PILLS */}
             <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide py-2">
                {hardwarePort && !isSharedView && (
                  <div className="relative shrink-0 border border-[#D31010] bg-[#111] px-5 py-3 flex items-center gap-4">
@@ -791,7 +807,13 @@ function App() {
                  </button>
               </div>
             ) : (
-              <form onSubmit={sendMessage} className="bg-[#0A0A0A] border border-[#444] p-1.5 flex items-center focus-within:border-white transition-colors">
+              <form onSubmit={sendMessage} className="bg-[#0A0A0A] border border-[#444] p-1.5 flex items-center focus-within:border-white transition-colors relative">
+                
+                {/* ✅ VOICE RECORDING MICROPHONE BUTTON */}
+                <button type="button" onClick={toggleRecording} onMouseEnter={(e) => handleMouseEnter(e, isRecording ? "STOP RECORDING" : "START VOICE INPUT", "top")} onMouseLeave={handleMouseLeave} className={`p-4 transition-colors shrink-0 ${isRecording ? 'text-[#D31010] bg-[#D31010]/20 animate-pulse border border-[#D31010]' : 'text-gray-500 hover:text-white'}`} title="Record Voice">
+                  <Mic size={22} strokeWidth={2} />
+                </button>
+                <div className="w-px h-6 bg-[#333]"></div>
                 
                 <button type="button" onClick={connectHardware} onMouseEnter={(e) => handleMouseEnter(e, "LINK HARDWARE", "top")} onMouseLeave={handleMouseLeave} className={`p-4 transition-colors shrink-0 ${hardwarePort ? 'text-[#D31010]' : 'text-gray-500 hover:text-white'}`}>
                   <Usb size={22} strokeWidth={2} />
@@ -812,9 +834,10 @@ function App() {
                   placeholder={activeChat?.projectId ? "COMMAND THE WORKSPACE..." : "TYPE @ FOR PROTOCOL OR ENTER PROMPT..."}
                   value={message}
                   onChange={handleMessageChange}
+                  disabled={isRecording}
                 />
                 
-                <button type="submit" disabled={!message.trim() && !imageBase64 && !csvFile} onMouseEnter={(e) => handleMouseEnter(e, "TRANSMIT", "top")} onMouseLeave={handleMouseLeave} className={`px-8 py-4 uppercase font-black tracking-widest text-sm transition-colors shrink-0 ${(message.trim() || imageBase64 || csvFile) ? "bg-[#D31010] text-white hover:bg-white hover:text-black" : "bg-[#111] text-gray-600 border-l border-[#333]"}`}>
+                <button type="submit" disabled={(!message.trim() && !imageBase64 && !csvFile) || isRecording} onMouseEnter={(e) => handleMouseEnter(e, "TRANSMIT", "top")} onMouseLeave={handleMouseLeave} className={`px-8 py-4 uppercase font-black tracking-widest text-sm transition-colors shrink-0 ${(message.trim() || imageBase64 || csvFile) ? "bg-[#D31010] text-white hover:bg-white hover:text-black" : "bg-[#111] text-gray-600 border-l border-[#333]"}`}>
                   SEND
                 </button>
               </form>
@@ -823,7 +846,6 @@ function App() {
         </div>
       </div>
 
-      {/* MODALS */}
       {isProjectModalOpen && (
         <div className="absolute inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-[#0A0A0A] border border-[#333] p-10 w-full max-w-md relative">
