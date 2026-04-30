@@ -61,7 +61,6 @@ function App() {
   const [csvFile, setCsvFile] = useState(null); 
   const [hardwarePort, setHardwarePort] = useState(null); 
   
-  // ✅ NEW VOICE RECORDING STATES
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -318,7 +317,6 @@ function App() {
     }
   };
 
-  // ✅ NEW VOICE RECORDING LOGIC TO CONNECT WITH PYTHON MICROSERVICE
   const toggleRecording = async () => {
     if (isRecording) {
       mediaRecorderRef.current?.stop();
@@ -364,6 +362,7 @@ function App() {
     }
   };
 
+  // ✅ UPDATED: LIGHTNING FAST STREAMING SEND MESSAGE
   const sendMessage = async (e) => {
     if (e) e.preventDefault();
     if (!message.trim() && !imageBase64 && !csvFile) return;
@@ -389,9 +388,10 @@ function App() {
     setShowAgentMenu(false); 
     clearAttachments(); 
 
+    // Add User Message Instantly
+    const visualMsg = currentBase64 ? `[Image Attached] 🖼️\n${baseMsg}` : baseMsg; 
     setChats(prevChats => prevChats.map(chat => {
       if (chat._id === activeChatId) {
-        const visualMsg = currentBase64 ? `[Image Attached] 🖼️\n${baseMsg}` : baseMsg; 
         return {
           ...chat,
           title: chat.messages.length === 0 ? (baseMsg.substring(0, 25) || "Data Analysis") : chat.title,
@@ -404,37 +404,98 @@ function App() {
     setIsTyping(true);
 
     try {
-      const res = await axios.post(`${API_BASE_URL}/chat`, { 
-        message: payloadMsg, 
-        chatId: activeChatId === "temp" ? null : activeChatId,
-        projectId: currentProjectId,
-        imageBase64: currentBase64,
-        mimeType: currentMimeType,
-        hardwareConnected: !!hardwarePort 
+      const response = await fetch(`${API_BASE_URL}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          message: payloadMsg,
+          chatId: activeChatId === "temp" ? null : activeChatId,
+          projectId: currentProjectId,
+          imageBase64: currentBase64,
+          mimeType: currentMimeType,
+          hardwareConnected: !!hardwarePort 
+        })
       });
 
-      const updatedDBChat = res.data;
-      setChats(prevChats => {
-        const filtered = prevChats.filter(c => c._id !== "temp" && c._id !== activeChatId);
-        return [updatedDBChat, ...filtered];
-      });
-      setActiveChatId(updatedDBChat._id); 
+      if (!response.ok) {
+        if(response.status === 401) handleLogout();
+        throw new Error("Network error");
+      }
 
-      if (hardwarePort && updatedDBChat.messages) {
-        const lastBotMsg = updatedDBChat.messages[updatedDBChat.messages.length - 1].text;
-        const cmdMatch = lastBotMsg.match(/<CMD>(.*?)<\/CMD>/);
-        if (cmdMatch && cmdMatch[1]) {
-           const writer = hardwarePort.writable.getWriter();
-           const encoder = new TextEncoder();
-           await writer.write(encoder.encode(cmdMatch[1] + "\n"));
-           writer.releaseLock();
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let done = false;
+      let botMessageText = "";
+      let realChatId = activeChatId;
+      let isFirstChunk = true;
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        if (value) {
+          const chunkString = decoder.decode(value, { stream: true });
+          const lines = chunkString.split('\n\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const dataStr = line.substring(6);
+              if (!dataStr) continue;
+              
+              try {
+                const data = JSON.parse(dataStr);
+                
+                if (data.init) {
+                  // DB mein save hone ke baad real ID aayi hai
+                  realChatId = data.chat._id;
+                  setActiveChatId(realChatId); 
+                  setChats(prev => {
+                    const filtered = prev.filter(c => c._id !== "temp" && c._id !== realChatId);
+                    return [data.chat, ...filtered].map(c => {
+                       if (c._id === realChatId) {
+                           // Bot ka empty message add karo stream capture karne ke liye
+                           return { ...c, messages: [...c.messages, {role: "bot", text: ""}] }; 
+                       }
+                       return c;
+                    });
+                  });
+                } else if (data.chunk) {
+                  setIsTyping(false); // Jaise hi pehla word aaye, loading indicator hide kar do
+                  botMessageText += data.chunk;
+                  setChats(prev => prev.map(c => {
+                    if (c._id === realChatId) {
+                      const newMessages = [...c.messages];
+                      newMessages[newMessages.length - 1].text = botMessageText;
+                      return { ...c, messages: newMessages };
+                    }
+                    return c;
+                  }));
+                } else if (data.done) {
+                  // Hardware CMD Handle
+                  if (hardwarePort) {
+                     const cmdMatch = botMessageText.match(/<CMD>(.*?)<\/CMD>/);
+                     if (cmdMatch && cmdMatch[1]) {
+                         const writer = hardwarePort.writable.getWriter();
+                         const encoder = new TextEncoder();
+                         writer.write(encoder.encode(cmdMatch[1] + "\n")).then(() => writer.releaseLock());
+                     }
+                  }
+                } else if (data.error) {
+                    showNotification(data.error);
+                }
+              } catch (e) {
+                console.error("Stream parse error", e, dataStr);
+              }
+            }
+          }
         }
       }
     } catch (err) {
-      if(err.response?.status === 401) handleLogout(); 
-      setChats(prevChats => prevChats.map(chat => {
+      setChats(prev => prev.map(chat => {
         if (chat._id === activeChatId) {
-          return { ...chat, messages: [...chat.messages, { role: "bot", text: "⚠️ **ERROR:** SIGNAL LOST." }] };
+          return { ...chat, messages: [...chat.messages, { role: "bot", text: "⚠️ **ERROR:** SIGNAL LOST OR NETWORK SLOW." }] };
         }
         return chat;
       }));
@@ -623,7 +684,6 @@ function App() {
         </div>
       )}
 
-      {/* ✅ MAIN CHAT AREA */}
       <div className="flex-1 flex flex-col relative min-w-0 z-10">
         <div className="h-16 md:h-24 flex items-center justify-between px-6 md:px-12 shrink-0 border-b border-[#333] bg-[#0A0A0A]">
           <div className="flex items-center gap-4 text-white max-w-[70%]">
@@ -690,7 +750,7 @@ function App() {
                         <ReactMarkdown 
                            remarkPlugins={[remarkGfm]} 
                            components={{
-                             p: ({node, ...props}) => <p className="mb-5 last:mb-0 tracking-wide" {...props} />,
+                             p: ({node, ...props}) => <p className="mb-5 last:mb-0 tracking-wide inline-block" {...props} />,
                              strong: ({node, ...props}) => <strong className={`font-black uppercase tracking-wider ${c.role==='user'?'text-black':'text-white'}`} {...props} />,
                              h1: ({node, ...props}) => <h1 className="text-3xl md:text-4xl font-black uppercase mb-6 mt-8 tracking-tighter text-white border-b border-[#333] pb-2" {...props} />,
                              h2: ({node, ...props}) => <h2 className="text-2xl md:text-3xl font-black uppercase mb-4 mt-6 tracking-tight text-[#D31010]" {...props} />,
@@ -712,11 +772,16 @@ function App() {
                         >
                           {renderText}
                         </ReactMarkdown>
+                        {/* Cursor blink effect for streaming chunk */}
+                        {isTyping && i === activeChat.messages.length - 1 && c.role === 'bot' && (
+                           <span className="inline-block w-2 h-4 bg-[#D31010] ml-1 animate-pulse align-middle"></span>
+                        )}
                       </div>
                    </div>
                  </div>
                )})}
-               {isTyping && (
+               {/* Show initial pulse when waiting for first chunk */}
+               {isTyping && activeChat.messages.length > 0 && activeChat.messages[activeChat.messages.length - 1].role === 'user' && (
                  <div className="flex items-start gap-6 max-w-[85%]">
                    <div className="w-10 h-10 border border-[#555] text-gray-300 flex-shrink-0 flex items-center justify-center mt-1">
                       <Bot size={20} strokeWidth={2} />
@@ -809,7 +874,6 @@ function App() {
             ) : (
               <form onSubmit={sendMessage} className="bg-[#0A0A0A] border border-[#444] p-1.5 flex items-center focus-within:border-white transition-colors relative">
                 
-                {/* ✅ VOICE RECORDING MICROPHONE BUTTON */}
                 <button type="button" onClick={toggleRecording} onMouseEnter={(e) => handleMouseEnter(e, isRecording ? "STOP RECORDING" : "START VOICE INPUT", "top")} onMouseLeave={handleMouseLeave} className={`p-4 transition-colors shrink-0 ${isRecording ? 'text-[#D31010] bg-[#D31010]/20 animate-pulse border border-[#D31010]' : 'text-gray-500 hover:text-white'}`} title="Record Voice">
                   <Mic size={22} strokeWidth={2} />
                 </button>

@@ -24,8 +24,6 @@ mongoose.connect(process.env.MONGO_URI)
   .catch(err => console.error("❌ MongoDB Connection Error:", err));
 
 // ================= SCHEMAS =================
-
-// 1. Naya User Schema
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
@@ -33,34 +31,31 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model("User", UserSchema);
 
-// 2. Project Schema (Ab User se link hoga)
 const ProjectSchema = new mongoose.Schema({
   name: String,
   stack: String,
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Added User ID
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   createdAt: { type: Date, default: Date.now }
 });
 const Project = mongoose.model("Project", ProjectSchema);
 
-// 3. Chat Schema (Ab User se link hoga)
 const ChatSchema = new mongoose.Schema({
   title: { type: String, default: "New Chat" },
   projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', default: null },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Added User ID
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   messages: [{ role: String, text: String }],
   createdAt: { type: Date, default: Date.now }
 });
 const Chat = mongoose.model("Chat", ChatSchema);
 
 // ================= MIDDLEWARE =================
-// Yeh check karega ki user ke paas valid entry pass (Token) hai ya nahi
 const authenticate = (req, res, next) => {
   const token = req.header("Authorization");
   if (!token) return res.status(401).json({ error: "Access Denied. Login Required." });
 
   try {
     const verified = jwt.verify(token.replace("Bearer ", ""), process.env.JWT_SECRET);
-    req.user = verified; // Verified user ka ID req.user mein daal diya
+    req.user = verified;
     next();
   } catch (err) {
     res.status(400).json({ error: "Invalid Token" });
@@ -68,21 +63,15 @@ const authenticate = (req, res, next) => {
 };
 
 // ================= AUTH ROUTES =================
-
-// Signup Route
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    
-    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ error: "Email already registered" });
 
-    // Hash Password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create User
     const newUser = new User({ name, email, password: hashedPassword });
     await newUser.save();
 
@@ -92,35 +81,27 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// Login Route
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Check user
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: "User not found" });
 
-    // Check password
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) return res.status(400).json({ error: "Invalid Password" });
 
-    // Create JWT Token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
-
     res.json({ token, user: { id: user._id, name: user.name, email: user.email } });
   } catch (err) {
     res.status(500).json({ error: "Login Failed" });
   }
 });
 
-// ================= APP ROUTES (Protected with `authenticate`) =================
-
+// ================= APP ROUTES =================
 app.get("/", (req, res) => {
   res.send("<h1>NEO-Z API with Auth is running smoothly 🚀</h1>");
 });
 
-// Fetch user-specific Projects
 app.get("/projects", authenticate, async (req, res) => {
   try {
     const projects = await Project.find({ userId: req.user.id }).sort({ createdAt: -1 });
@@ -130,7 +111,6 @@ app.get("/projects", authenticate, async (req, res) => {
   }
 });
 
-// Create Project
 app.post("/projects", authenticate, async (req, res) => {
   const { name, stack } = req.body;
   try {
@@ -141,7 +121,6 @@ app.post("/projects", authenticate, async (req, res) => {
   }
 });
 
-// Fetch user-specific Chats
 app.get("/chats", authenticate, async (req, res) => {
   try {
     const chats = await Chat.find({ userId: req.user.id }).sort({ createdAt: -1 });
@@ -151,25 +130,32 @@ app.get("/chats", authenticate, async (req, res) => {
   }
 });
 
-// Main Chat Route
+// ✅ UPDATED: MAIN CHAT ROUTE WITH STREAMING
 app.post("/chat", authenticate, async (req, res) => {
   const { message, chatId, projectId, imageBase64, mimeType } = req.body;
 
   if (!message && !imageBase64) return res.status(400).json({ error: "Message or image is required" });
 
+  // SSE Setup: Headers for streaming
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
   try {
     let chat;
     if (chatId && mongoose.Types.ObjectId.isValid(chatId)) {
       chat = await Chat.findById(chatId);
-      // Security check: Make sure this chat belongs to the user
-      if(chat.userId.toString() !== req.user.id) return res.status(403).json({error: "Unauthorized"});
+      if(chat && chat.userId.toString() !== req.user.id) {
+          res.write(`data: ${JSON.stringify({ error: "Unauthorized" })}\n\n`);
+          return res.end();
+      }
     }
     
     if (!chat) {
       chat = new Chat({ 
         title: message ? message.substring(0, 30) : "Image Upload", 
         projectId: projectId || null,
-        userId: req.user.id, // Assign to logged-in user
+        userId: req.user.id,
         messages: [] 
       });
     }
@@ -188,6 +174,12 @@ app.post("/chat", authenticate, async (req, res) => {
 
     const visualMsg = imageBase64 ? `[Image Attached] 🖼️\n${message}` : message;
     chat.messages.push({ role: "user", text: visualMsg });
+    
+    // First save the user message to get the chatId
+    await chat.save();
+    
+    // Send initial chat state (so frontend has the ID immediately)
+    res.write(`data: ${JSON.stringify({ init: true, chat: chat })}\n\n`);
 
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" }); 
     const chatSession = model.startChat({ history: sharedHistory });
@@ -196,17 +188,33 @@ app.post("/chat", authenticate, async (req, res) => {
     if (imageBase64) messageParts.push({ inlineData: { data: imageBase64.split(',')[1], mimeType: mimeType || "image/jpeg" } });
     if (message) messageParts.push({ text: message });
 
-    const result = await chatSession.sendMessage(messageParts);
-    chat.messages.push({ role: "bot", text: result.response.text() });
+    // USE sendMessageStream for real-time chunks
+    const result = await chatSession.sendMessageStream(messageParts);
+    
+    let fullBotResponse = "";
+
+    for await (const chunk of result.stream) {
+      const chunkText = chunk.text();
+      fullBotResponse += chunkText;
+      // Send chunk to frontend
+      res.write(`data: ${JSON.stringify({ chunk: chunkText })}\n\n`);
+    }
+
+    // Save full bot response to DB after streaming is done
+    chat.messages.push({ role: "bot", text: fullBotResponse });
     await chat.save();
 
-    res.json(chat);
+    // Signal completion
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
+
   } catch (err) {
-    res.status(500).json({ error: "Gemini error ❌" });
+      console.error(err);
+      res.write(`data: ${JSON.stringify({ error: "Gemini error ❌" })}\n\n`);
+      res.end();
   }
 });
 
-// Delete Chat
 app.delete("/chat/:id", authenticate, async (req, res) => {
   try {
     await Chat.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
@@ -216,7 +224,6 @@ app.delete("/chat/:id", authenticate, async (req, res) => {
   }
 });
 
-// ✅ Public route for Shared Links (No auth required)
 app.get("/chat/:id", async (req, res) => {
   try {
     const chat = await Chat.findById(req.params.id);
