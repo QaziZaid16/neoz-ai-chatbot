@@ -1,5 +1,5 @@
 # 1. Base Python image
-FROM python:3.10-slim
+FROM python:3.13-slim
 
 # 2. Install ffmpeg for Audio Processing (Yeh error fix karega!)
 RUN apt-get update && apt-get install -y ffmpeg
