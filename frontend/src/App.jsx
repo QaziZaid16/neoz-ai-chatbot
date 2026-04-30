@@ -340,7 +340,7 @@ function App() {
 
         showNotification("ANALYZING VOICE DATA...");
         try {
-          const res = await axios.post("http://127.0.0.1:8000/api/voice-to-text", formData);
+          const res = await axios.post("https://neoz-python-brain.onrender.com", formData);
           if (res.data.success) {
             setMessage(prev => (prev + " " + res.data.text).trim());
             showNotification("VOICE TRANSCRIBED.");
