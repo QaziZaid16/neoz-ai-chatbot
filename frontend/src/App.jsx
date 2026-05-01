@@ -8,7 +8,7 @@ import {
   Bot, Code, Lightbulb, Paperclip, Mic, Send, Bookmark, Wrench, DollarSign, 
   HelpCircle, Plus, Trash2, Share2, X, Folder, FolderOpen, ChevronRight, LogOut, Mail, Lock, User,
   Copy, Check, MessageCircle, FileSpreadsheet, Usb, 
-  Palette, Code2, PenTool, LineChart 
+  Palette, Code2, PenTool, LineChart, Volume2, Square 
 } from "lucide-react";
 
 const API_BASE_URL = "https://neoz-ai-chatbot.onrender.com";
@@ -68,6 +68,9 @@ function App() {
   const [showAgentMenu, setShowAgentMenu] = useState(false);
   const [agentSearch, setAgentSearch] = useState("");
 
+  // Naya State: Voice Narrator (Male/Female)
+  const [voiceType, setVoiceType] = useState('female');
+
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const csvInputRef = useRef(null);
@@ -108,6 +111,37 @@ function App() {
   const handleMouseLeave = () => {
     setTooltip({ show: false, text: "", top: 0, left: 0, position: "right" });
   };
+
+  // --- NEW FEATURES: Copy & Speech Narrator ---
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    showNotification("DATA COPIED TO CLIPBOARD.");
+  };
+
+  const speakText = (text) => {
+    window.speechSynthesis.cancel(); // Agar pehle se kuch bol raha hai toh roko
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    let selectedVoice;
+    
+    if (voiceType === 'female') {
+      selectedVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Zira') || v.name.includes('Google UK English Female'));
+    } else {
+      selectedVoice = voices.find(v => v.name.includes('Male') || v.name.includes('David') || v.name.includes('Daniel') || v.name.includes('Google UK English Male') || v.name.includes('Rishi'));
+    }
+
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    }
+    
+    utterance.rate = 1.0; 
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    window.speechSynthesis.cancel();
+  };
+  // --------------------------------------------
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -318,51 +352,10 @@ function App() {
   };
 
   const toggleRecording = async () => {
-    if (isRecording) {
-      mediaRecorderRef.current?.stop();
-      setIsRecording(false);
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      audioChunksRef.current = [];
-
-      mediaRecorderRef.current.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-
-      mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const formData = new FormData();
-        formData.append("audio_file", audioBlob, "recording.webm");
-
-        showNotification("ANALYZING VOICE DATA...");
-        try {
-          const res = await axios.post("https://neoz-python-docker.onrender.com/api/voice-to-text", formData);
-          if (res.data.success) {
-            setMessage(prev => (prev + " " + res.data.text).trim());
-            showNotification("VOICE TRANSCRIBED.");
-            inputRef.current?.focus();
-          } else {
-            showNotification("PROCESSING ERROR. SEE CONSOLE.");
-            console.error("Python Server Error:", res.data.error);
-          }
-        } catch (err) {
-          showNotification("PYTHON MICROSERVICE OFFLINE.");
-        }
-      };
-
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-      showNotification("RECORDING... CLICK MIC TO STOP.");
-    } catch (err) {
-      showNotification("MICROPHONE ACCESS DENIED.");
-    }
+    // This feature is currently parked but kept the UI intact.
+    showNotification("VOICE MODULE CURRENTLY OFFLINE FOR UPGRADES.");
   };
 
-  // ✅ UPDATED: LIGHTNING FAST STREAMING SEND MESSAGE
   const sendMessage = async (e) => {
     if (e) e.preventDefault();
     if (!message.trim() && !imageBase64 && !csvFile) return;
@@ -388,7 +381,6 @@ function App() {
     setShowAgentMenu(false); 
     clearAttachments(); 
 
-    // Add User Message Instantly
     const visualMsg = currentBase64 ? `[Image Attached] 🖼️\n${baseMsg}` : baseMsg; 
     setChats(prevChats => prevChats.map(chat => {
       if (chat._id === activeChatId) {
@@ -430,7 +422,6 @@ function App() {
       let done = false;
       let botMessageText = "";
       let realChatId = activeChatId;
-      let isFirstChunk = true;
 
       while (!done) {
         const { value, done: readerDone } = await reader.read();
@@ -448,21 +439,19 @@ function App() {
                 const data = JSON.parse(dataStr);
                 
                 if (data.init) {
-                  // DB mein save hone ke baad real ID aayi hai
                   realChatId = data.chat._id;
                   setActiveChatId(realChatId); 
                   setChats(prev => {
                     const filtered = prev.filter(c => c._id !== "temp" && c._id !== realChatId);
                     return [data.chat, ...filtered].map(c => {
                        if (c._id === realChatId) {
-                           // Bot ka empty message add karo stream capture karne ke liye
                            return { ...c, messages: [...c.messages, {role: "bot", text: ""}] }; 
                        }
                        return c;
                     });
                   });
                 } else if (data.chunk) {
-                  setIsTyping(false); // Jaise hi pehla word aaye, loading indicator hide kar do
+                  setIsTyping(false); 
                   botMessageText += data.chunk;
                   setChats(prev => prev.map(c => {
                     if (c._id === realChatId) {
@@ -473,7 +462,6 @@ function App() {
                     return c;
                   }));
                 } else if (data.done) {
-                  // Hardware CMD Handle
                   if (hardwarePort) {
                      const cmdMatch = botMessageText.match(/<CMD>(.*?)<\/CMD>/);
                      if (cmdMatch && cmdMatch[1]) {
@@ -588,9 +576,9 @@ function App() {
       )}
 
       {!isSharedView && (
-        <div className={`fixed md:relative z-40 h-full transition-all duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0 w-[85vw] sm:w-[320px]' : '-translate-x-full md:translate-x-0 md:w-[80px]'} bg-[#0A0A0A] border-r border-[#333] shrink-0`}>
-          <div className="flex flex-col h-full p-4 md:p-6">
-            <div className={`flex w-full items-center ${isSidebarOpen ? 'justify-between' : 'justify-center flex-col gap-6'} mb-8 pb-6 border-b border-[#333]`}>
+        <div className={`fixed md:relative z-40 h-full transition-all duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0 w-[85vw] sm:w-[320px]' : '-translate-x-full md:translate-x-0 md:w-[80px]'} bg-[#0A0A0A] border-r border-[#333] shrink-0 flex flex-col`}>
+          <div className="flex flex-col flex-1 p-4 md:p-6 overflow-y-auto scrollbar-hide">
+            <div className={`flex w-full items-center ${isSidebarOpen ? 'justify-between' : 'justify-center flex-col gap-6'} mb-8 pb-6 border-b border-[#333] shrink-0`}>
               <div onMouseEnter={(e) => handleMouseEnter(e, "SYSTEM DASHBOARD")} onMouseLeave={handleMouseLeave} className="flex items-center gap-3 cursor-pointer">
                 <div className="text-[#D31010] font-black text-2xl leading-none tracking-tighter">N.</div>
                 {isSidebarOpen && <h2 className="text-[#D31010] font-black uppercase text-2xl tracking-tighter leading-none mt-1">NEO-Z</h2>}
@@ -606,67 +594,88 @@ function App() {
               {isSidebarOpen && <span>NEW TRACK</span>}
             </button>
 
-            <div className="flex-1 w-full overflow-y-auto scrollbar-hide space-y-8">
-              <div className="w-full flex flex-col items-center md:items-stretch">
-                {isSidebarOpen ? (
-                  <div className="flex items-center justify-between mb-4 border-b border-[#333] pb-2">
-                    <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">RECORD LABELS.</p>
-                    <button onClick={() => setIsProjectModalOpen(true)} onMouseEnter={(e) => handleMouseEnter(e, "CREATE LABEL")} onMouseLeave={handleMouseLeave} className="text-gray-500 hover:text-[#D31010]"><Plus size={14} strokeWidth={3}/></button>
-                  </div>
-                ) : ( <div className="w-full h-px bg-[#333] mb-6" /> )}
-                <div className="space-y-1 w-full flex flex-col items-center md:items-stretch">
-                  {projects.map(proj => (
-                    <div key={proj._id} className="flex flex-col w-full">
-                      <div onClick={() => { setActiveProjectId(activeProjectId === proj._id ? null : proj._id); if (!isSidebarOpen && window.innerWidth >= 768) setIsSidebarOpen(true); }} onMouseEnter={(e) => handleMouseEnter(e, `OPEN: ${proj.name}`)} onMouseLeave={handleMouseLeave} className={`flex items-center ${isSidebarOpen ? 'gap-3 px-2 py-2 justify-start' : 'justify-center p-3 mx-auto'} w-full cursor-pointer transition-colors ${activeProjectId === proj._id ? "bg-[#111] text-[#D31010] border-l-2 border-[#D31010]" : "text-gray-500 hover:bg-[#111] hover:text-white border-l-2 border-transparent"}`}>
-                        {activeProjectId === proj._id ? <FolderOpen size={16} strokeWidth={2} className="shrink-0" /> : <Folder size={16} strokeWidth={2} className="shrink-0" />}
-                        {isSidebarOpen && <span className="font-bold text-sm tracking-wide truncate flex-1 uppercase">{proj.name}</span>}
-                        {isSidebarOpen && <ChevronRight size={14} strokeWidth={2.5} className={`transition-transform shrink-0 ${activeProjectId === proj._id ? "rotate-90 text-[#D31010]" : ""}`} />}
-                      </div>
-                      {isSidebarOpen && activeProjectId === proj._id && (
-                        <div className="ml-2 border-l border-[#333] pl-3 mt-1 space-y-1 py-2 w-full">
-                          {projectChats.filter(c => c.projectId === proj._id).map(chat => (
-                            <div key={chat._id} onClick={() => selectChatMobileFriendly(chat._id)} className={`group flex items-center justify-between text-xs px-2 py-2 cursor-pointer transition-colors ${activeChatId === chat._id ? "text-white bg-[#D31010]/10 font-bold" : "text-gray-500 hover:text-white hover:bg-[#111] font-medium"}`}>
-                              <span className="truncate pr-2 uppercase">{chat.title}</span>
-                              <div className="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0">
-                                 <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} onMouseEnter={(e) => handleMouseEnter(e, "PUBLISH")} onMouseLeave={handleMouseLeave} className="hover:text-white"><Share2 size={12}/></button>
-                                 <button onClick={(e) => deleteChat(e, chat._id)} onMouseEnter={(e) => handleMouseEnter(e, "DELETE")} onMouseLeave={handleMouseLeave} className="hover:text-[#D31010]"><Trash2 size={12}/></button>
-                              </div>
+            <div className="w-full flex flex-col items-center md:items-stretch mb-8 shrink-0">
+              {isSidebarOpen ? (
+                <div className="flex items-center justify-between mb-4 border-b border-[#333] pb-2">
+                  <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">RECORD LABELS.</p>
+                  <button onClick={() => setIsProjectModalOpen(true)} onMouseEnter={(e) => handleMouseEnter(e, "CREATE LABEL")} onMouseLeave={handleMouseLeave} className="text-gray-500 hover:text-[#D31010]"><Plus size={14} strokeWidth={3}/></button>
+                </div>
+              ) : ( <div className="w-full h-px bg-[#333] mb-6" /> )}
+              <div className="space-y-1 w-full flex flex-col items-center md:items-stretch">
+                {projects.map(proj => (
+                  <div key={proj._id} className="flex flex-col w-full">
+                    <div onClick={() => { setActiveProjectId(activeProjectId === proj._id ? null : proj._id); if (!isSidebarOpen && window.innerWidth >= 768) setIsSidebarOpen(true); }} onMouseEnter={(e) => handleMouseEnter(e, `OPEN: ${proj.name}`)} onMouseLeave={handleMouseLeave} className={`flex items-center ${isSidebarOpen ? 'gap-3 px-2 py-2 justify-start' : 'justify-center p-3 mx-auto'} w-full cursor-pointer transition-colors ${activeProjectId === proj._id ? "bg-[#111] text-[#D31010] border-l-2 border-[#D31010]" : "text-gray-500 hover:bg-[#111] hover:text-white border-l-2 border-transparent"}`}>
+                      {activeProjectId === proj._id ? <FolderOpen size={16} strokeWidth={2} className="shrink-0" /> : <Folder size={16} strokeWidth={2} className="shrink-0" />}
+                      {isSidebarOpen && <span className="font-bold text-sm tracking-wide truncate flex-1 uppercase">{proj.name}</span>}
+                      {isSidebarOpen && <ChevronRight size={14} strokeWidth={2.5} className={`transition-transform shrink-0 ${activeProjectId === proj._id ? "rotate-90 text-[#D31010]" : ""}`} />}
+                    </div>
+                    {isSidebarOpen && activeProjectId === proj._id && (
+                      <div className="ml-2 border-l border-[#333] pl-3 mt-1 space-y-1 py-2 w-full">
+                        {projectChats.filter(c => c.projectId === proj._id).map(chat => (
+                          <div key={chat._id} onClick={() => selectChatMobileFriendly(chat._id)} className={`group flex items-center justify-between text-xs px-2 py-2 cursor-pointer transition-colors ${activeChatId === chat._id ? "text-white bg-[#D31010]/10 font-bold" : "text-gray-500 hover:text-white hover:bg-[#111] font-medium"}`}>
+                            <span className="truncate pr-2 uppercase">{chat.title}</span>
+                            <div className="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0">
+                               <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} onMouseEnter={(e) => handleMouseEnter(e, "PUBLISH")} onMouseLeave={handleMouseLeave} className="hover:text-white"><Share2 size={12}/></button>
+                               <button onClick={(e) => deleteChat(e, chat._id)} onMouseEnter={(e) => handleMouseEnter(e, "DELETE")} onMouseLeave={handleMouseLeave} className="hover:text-[#D31010]"><Trash2 size={12}/></button>
                             </div>
-                          ))}
-                          <button onClick={() => createNewChat(proj._id)} className="text-[10px] font-black tracking-widest text-[#D31010] px-2 py-2 hover:bg-[#111] w-full text-left transition-colors mt-2 uppercase">+ ADD TRACK</button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="w-full flex flex-col items-center md:items-stretch">
-                {isSidebarOpen ? (
-                   <div className="flex items-center justify-between mb-4 border-b border-[#333] pb-2">
-                     <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">SINGLES.</p>
-                   </div>
-                ) : ( <div className="w-full h-px bg-[#333] mb-6" /> )}
-                <div className="space-y-1 w-full flex flex-col items-center md:items-stretch">
-                  {standaloneChats.map(chat => (
-                    <div key={chat._id} onClick={() => selectChatMobileFriendly(chat._id)} onMouseEnter={(e) => handleMouseEnter(e, chat.title)} onMouseLeave={handleMouseLeave} className={`group flex items-center ${isSidebarOpen ? 'justify-between px-2 py-2.5' : 'justify-center p-3 mx-auto'} w-full cursor-pointer transition-colors border-l-2 ${activeChatId === chat._id ? "bg-[#111] border-[#D31010] text-white" : "border-transparent text-gray-500 hover:text-white hover:bg-[#111]"}`}>
-                      <div className={`flex items-center ${isSidebarOpen ? 'gap-3 truncate' : 'justify-center'} w-full`}>
-                        <FileText size={16} strokeWidth={2} className={`shrink-0 ${activeChatId === chat._id ? "text-[#D31010]" : ""}`} />
-                        {isSidebarOpen && <span className="truncate font-bold text-sm tracking-wide uppercase">{chat.title}</span>}
+                          </div>
+                        ))}
+                        <button onClick={() => createNewChat(proj._id)} className="text-[10px] font-black tracking-widest text-[#D31010] px-2 py-2 hover:bg-[#111] w-full text-left transition-colors mt-2 uppercase">+ ADD TRACK</button>
                       </div>
-                      {isSidebarOpen && (
-                        <div className={`flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0`}>
-                          <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} onMouseEnter={(e) => handleMouseEnter(e, "PUBLISH")} onMouseLeave={handleMouseLeave} className="hover:text-white"><Share2 size={14} strokeWidth={2}/></button>
-                          <button onClick={(e) => deleteChat(e, chat._id)} onMouseEnter={(e) => handleMouseEnter(e, "DELETE")} onMouseLeave={handleMouseLeave} className="hover:text-[#D31010]"><Trash2 size={14} strokeWidth={2}/></button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div className={`w-full mt-6 pt-5 border-t border-[#333] flex ${isSidebarOpen ? 'items-center gap-4' : 'flex-col items-center gap-4'} shrink-0`}>
+            <div className="w-full flex flex-col items-center md:items-stretch shrink-0">
+              {isSidebarOpen ? (
+                 <div className="flex items-center justify-between mb-4 border-b border-[#333] pb-2">
+                   <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">SINGLES.</p>
+                 </div>
+              ) : ( <div className="w-full h-px bg-[#333] mb-6" /> )}
+              <div className="space-y-1 w-full flex flex-col items-center md:items-stretch">
+                {standaloneChats.map(chat => (
+                  <div key={chat._id} onClick={() => selectChatMobileFriendly(chat._id)} onMouseEnter={(e) => handleMouseEnter(e, chat.title)} onMouseLeave={handleMouseLeave} className={`group flex items-center ${isSidebarOpen ? 'justify-between px-2 py-2.5' : 'justify-center p-3 mx-auto'} w-full cursor-pointer transition-colors border-l-2 ${activeChatId === chat._id ? "bg-[#111] border-[#D31010] text-white" : "border-transparent text-gray-500 hover:text-white hover:bg-[#111]"}`}>
+                    <div className={`flex items-center ${isSidebarOpen ? 'gap-3 truncate' : 'justify-center'} w-full`}>
+                      <FileText size={16} strokeWidth={2} className={`shrink-0 ${activeChatId === chat._id ? "text-[#D31010]" : ""}`} />
+                      {isSidebarOpen && <span className="truncate font-bold text-sm tracking-wide uppercase">{chat.title}</span>}
+                    </div>
+                    {isSidebarOpen && (
+                      <div className={`flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0`}>
+                        <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} onMouseEnter={(e) => handleMouseEnter(e, "PUBLISH")} onMouseLeave={handleMouseLeave} className="hover:text-white"><Share2 size={14} strokeWidth={2}/></button>
+                        <button onClick={(e) => deleteChat(e, chat._id)} onMouseEnter={(e) => handleMouseEnter(e, "DELETE")} onMouseLeave={handleMouseLeave} className="hover:text-[#D31010]"><Trash2 size={14} strokeWidth={2}/></button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+            
+          {/* VOICE SETTINGS & PROFILE SECTION (Fixed at bottom of sidebar) */}
+          <div className="w-full bg-[#0A0A0A] p-4 md:p-6 shrink-0 mt-auto">
+            {isSidebarOpen && (
+              <div className="w-full mb-6 flex flex-col gap-2">
+                <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest px-2">VOICE PROTOCOL.</p>
+                <div className="flex gap-2 px-2">
+                  <button
+                    onClick={() => setVoiceType('female')}
+                    className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${voiceType === 'female' ? 'bg-[#D31010] text-white' : 'bg-[#111] text-gray-500 border border-[#333] hover:text-white'}`}
+                  >
+                    FEMALE
+                  </button>
+                  <button
+                    onClick={() => setVoiceType('male')}
+                    className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${voiceType === 'male' ? 'bg-[#D31010] text-white' : 'bg-[#111] text-gray-500 border border-[#333] hover:text-white'}`}
+                  >
+                    MALE
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className={`w-full border-t border-[#333] pt-5 flex ${isSidebarOpen ? 'items-center gap-4' : 'flex-col items-center gap-4'}`}>
               <div onMouseEnter={(e) => handleMouseEnter(e, "IDENTITY")} onMouseLeave={handleMouseLeave} className="w-10 h-10 bg-[#D31010] flex items-center justify-center text-white font-black text-sm uppercase shrink-0 cursor-pointer">
                 {user?.name?.charAt(0) || "Z"}
               </div>
@@ -772,6 +781,20 @@ function App() {
                         >
                           {renderText}
                         </ReactMarkdown>
+
+                        {/* ✅ ACTION BUTTONS (COPY / SPEAK) */}
+                        <div className={`flex items-center gap-4 mt-4 pt-3 border-t ${c.role === 'user' ? 'border-white/20 justify-end text-white/70' : 'border-[#333] justify-start text-gray-500'}`}>
+                          <button onClick={() => copyToClipboard(c.text)} className="hover:text-white transition-colors" title="Copy Text">
+                            <Copy size={16} strokeWidth={2.5} />
+                          </button>
+                          <button onClick={() => speakText(renderText)} className="hover:text-[#D31010] transition-colors" title="Read Aloud">
+                            <Volume2 size={16} strokeWidth={2.5} />
+                          </button>
+                          <button onClick={stopSpeaking} className="hover:text-[#D31010] transition-colors" title="Stop Audio">
+                            <Square size={16} strokeWidth={2.5} />
+                          </button>
+                        </div>
+
                         {/* Cursor blink effect for streaming chunk */}
                         {isTyping && i === activeChat.messages.length - 1 && c.role === 'bot' && (
                            <span className="inline-block w-2 h-4 bg-[#D31010] ml-1 animate-pulse align-middle"></span>
@@ -799,7 +822,7 @@ function App() {
           )}
         </div>
 
-        {/* ✅ INPUT AREA */}
+        {/* INPUT AREA */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A] to-transparent pt-12 pb-6 px-4 md:px-12 z-20">
           <div className="max-w-5xl mx-auto w-full flex flex-col gap-3 relative">
             
