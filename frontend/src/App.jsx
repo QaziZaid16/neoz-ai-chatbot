@@ -68,7 +68,6 @@ function App() {
   const [showAgentMenu, setShowAgentMenu] = useState(false);
   const [agentSearch, setAgentSearch] = useState("");
 
-  // Naya State: Voice Narrator (Male/Female)
   const [voiceType, setVoiceType] = useState('female');
 
   const chatEndRef = useRef(null);
@@ -112,14 +111,13 @@ function App() {
     setTooltip({ show: false, text: "", top: 0, left: 0, position: "right" });
   };
 
-  // --- NEW FEATURES: Copy & Speech Narrator ---
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
     showNotification("DATA COPIED TO CLIPBOARD.");
   };
 
   const speakText = (text) => {
-    window.speechSynthesis.cancel(); // Agar pehle se kuch bol raha hai toh roko
+    window.speechSynthesis.cancel(); 
     const utterance = new SpeechSynthesisUtterance(text);
     const voices = window.speechSynthesis.getVoices();
     let selectedVoice;
@@ -141,7 +139,6 @@ function App() {
   const stopSpeaking = () => {
     window.speechSynthesis.cancel();
   };
-  // --------------------------------------------
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -352,7 +349,6 @@ function App() {
   };
 
   const toggleRecording = async () => {
-    // This feature is currently parked but kept the UI intact.
     showNotification("VOICE MODULE CURRENTLY OFFLINE FOR UPGRADES.");
   };
 
@@ -500,8 +496,8 @@ function App() {
   const NotificationToast = () => {
     if (!notification.show) return null;
     return (
-      <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[999] bg-[#111] border-2 border-[#D31010] py-3 px-6 shadow-[6px_6px_0px_#D31010] animate-in slide-in-from-top-4 flex items-center gap-4">
-        <span className="text-[#D31010] font-black text-xl leading-none">!</span>
+      <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[999] bg-[#111] border-2 border-[#FF3333] py-3 px-6 shadow-[6px_6px_0px_#FF3333] animate-in slide-in-from-top-4 flex items-center gap-4">
+        <span className="text-[#FF3333] font-black text-xl leading-none">!</span>
         <span className="text-white font-black uppercase tracking-widest text-xs">{notification.message}</span>
       </div>
     );
@@ -509,47 +505,47 @@ function App() {
 
   if (!token && !isSharedView) {
     return (
-      <div className="min-h-screen w-screen bg-[#111111] text-[#E5E5E5] flex items-center justify-center relative overflow-hidden px-4 py-8 font-sans selection:bg-[#D31010] selection:text-white">
+      <div className="min-h-screen w-screen bg-[#111111] text-[#E5E5E5] flex items-center justify-center relative overflow-hidden px-4 py-8 font-sans selection:bg-[#FF3333] selection:text-white">
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-overlay" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")'}}></div>
         <NotificationToast />
 
         <div className="border border-[#333] bg-[#0A0A0A] p-8 md:p-12 w-full max-w-md relative z-10">
-          <div className="absolute top-4 right-4 text-[#D31010] text-xl font-black tracking-widest leading-none">X X</div>
+          <button aria-label="Close" className="absolute top-4 right-4 text-[#FF3333] text-xl font-black tracking-widest leading-none" title="Close">X X</button>
           <div className="flex flex-col mb-10 border-b border-[#333] pb-6">
-            <h2 className="text-[#D31010] font-black uppercase text-5xl tracking-tighter leading-none mb-2">NEO-Z.</h2>
-            <div className="flex justify-between text-[10px] text-gray-500 uppercase tracking-widest w-full">
+            <h2 className="text-[#FF3333] font-black uppercase text-5xl tracking-tighter leading-none mb-2">NEO-Z.</h2>
+            <div className="flex justify-between text-[10px] text-gray-400 uppercase tracking-widest w-full">
               <span>System Node.</span>
               <span>{dateString}</span>
             </div>
           </div>
           <h3 className="text-xl font-black text-white uppercase mb-2">{authMode === "login" ? "ENTER THE DARKLANDS" : "INITIALIZE NODE"}</h3>
-          <p className="text-gray-500 text-xs mb-8 font-medium uppercase tracking-widest">{authMode === "login" ? "IDENTIFY YOURSELF." : "CREATE YOUR SIGNAL."}</p>
-          {authError && <div className="bg-[#D31010] text-white p-3 text-xs mb-6 font-bold uppercase tracking-widest border border-red-900">{authError}</div>}
+          <p className="text-gray-400 text-xs mb-8 font-medium uppercase tracking-widest">{authMode === "login" ? "IDENTIFY YOURSELF." : "CREATE YOUR SIGNAL."}</p>
+          {authError && <div className="bg-[#FF3333] text-white p-3 text-xs mb-6 font-bold uppercase tracking-widest border border-red-900">{authError}</div>}
           
           <form onSubmit={handleAuthSubmit} className="space-y-4">
             {authMode === "signup" && (
               <div>
-                <label className="text-[10px] text-[#D31010] font-bold uppercase tracking-widest mb-1 block">Full Name.</label>
-                <input type="text" required value={authForm.name} onChange={(e) => setAuthForm({...authForm, name: e.target.value})} className="w-full bg-[#111] border border-[#333] text-white px-4 py-3 outline-none focus:border-[#D31010] transition-colors font-medium rounded-none"/>
+                <label className="text-[10px] text-[#FF3333] font-bold uppercase tracking-widest mb-1 block">Full Name.</label>
+                <input type="text" required value={authForm.name} onChange={(e) => setAuthForm({...authForm, name: e.target.value})} className="w-full bg-[#111] border border-[#333] text-white px-4 py-3 outline-none focus:border-[#FF3333] transition-colors font-medium rounded-none"/>
               </div>
             )}
             <div>
-              <label className="text-[10px] text-[#D31010] font-bold uppercase tracking-widest mb-1 block">Email Address.</label>
-              <input type="email" required value={authForm.email} onChange={(e) => setAuthForm({...authForm, email: e.target.value})} className="w-full bg-[#111] border border-[#333] text-white px-4 py-3 outline-none focus:border-[#D31010] transition-colors font-medium rounded-none"/>
+              <label className="text-[10px] text-[#FF3333] font-bold uppercase tracking-widest mb-1 block">Email Address.</label>
+              <input type="email" required value={authForm.email} onChange={(e) => setAuthForm({...authForm, email: e.target.value})} className="w-full bg-[#111] border border-[#333] text-white px-4 py-3 outline-none focus:border-[#FF3333] transition-colors font-medium rounded-none"/>
             </div>
             <div>
-              <label className="text-[10px] text-[#D31010] font-bold uppercase tracking-widest mb-1 block">Password.</label>
-              <input type="password" required value={authForm.password} onChange={(e) => setAuthForm({...authForm, password: e.target.value})} className="w-full bg-[#111] border border-[#333] text-white px-4 py-3 outline-none focus:border-[#D31010] transition-colors font-medium rounded-none"/>
+              <label className="text-[10px] text-[#FF3333] font-bold uppercase tracking-widest mb-1 block">Password.</label>
+              <input type="password" required value={authForm.password} onChange={(e) => setAuthForm({...authForm, password: e.target.value})} className="w-full bg-[#111] border border-[#333] text-white px-4 py-3 outline-none focus:border-[#FF3333] transition-colors font-medium rounded-none"/>
             </div>
-            <button type="submit" disabled={isAuthLoading} className="w-full bg-[#D31010] text-white font-black uppercase tracking-widest text-sm py-4 mt-6 hover:bg-white hover:text-black transition-all disabled:opacity-50">
+            <button type="submit" disabled={isAuthLoading} aria-label={authMode === "login" ? "Connect" : "Register"} className="w-full bg-[#FF3333] text-white font-black uppercase tracking-widest text-sm py-4 mt-6 hover:bg-white hover:text-black transition-all disabled:opacity-50">
               {isAuthLoading ? "PROCESSING..." : (authMode === "login" ? "CONNECT" : "REGISTER")}
             </button>
           </form>
 
-          <div className="h-4 w-full mt-10" style={{backgroundImage: 'repeating-linear-gradient(45deg, #D31010, #D31010 2px, transparent 2px, transparent 8px)'}}></div>
-          <div className="mt-6 text-center text-xs text-gray-500 font-bold uppercase tracking-widest">
+          <div className="h-4 w-full mt-10" style={{backgroundImage: 'repeating-linear-gradient(45deg, #FF3333, #FF3333 2px, transparent 2px, transparent 8px)'}}></div>
+          <div className="mt-6 text-center text-xs text-gray-400 font-bold uppercase tracking-widest">
             {authMode === "login" ? "NO SIGNAL?" : "ALREADY REGISTERED?"}
-            <button onClick={() => { setAuthMode(authMode === "login" ? "signup" : "login"); setAuthError(""); }} className="text-white hover:text-[#D31010] ml-2 underline decoration-[#D31010] underline-offset-4 transition-colors">
+            <button aria-label={authMode === "login" ? "Create an account" : "Log in"} onClick={() => { setAuthMode(authMode === "login" ? "signup" : "login"); setAuthError(""); }} className="text-white hover:text-[#FF3333] ml-2 underline decoration-[#FF3333] underline-offset-4 transition-colors">
               {authMode === "login" ? "CREATE ONE." : "LOGIN."}
             </button>
           </div>
@@ -559,13 +555,13 @@ function App() {
   }
 
   return (
-    <div className="h-screen w-screen bg-[#111111] text-[#E5E5E5] flex overflow-hidden relative font-sans selection:bg-[#D31010] selection:text-white">
+    <div className="h-screen w-screen bg-[#111111] text-[#E5E5E5] flex overflow-hidden relative font-sans selection:bg-[#FF3333] selection:text-white">
       <div className="absolute inset-0 opacity-[0.02] pointer-events-none mix-blend-overlay z-0" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")'}}></div>
 
       <NotificationToast />
 
       {tooltip.show && (
-        <div className="fixed z-[100] px-3 py-1.5 bg-[#D31010] text-white text-[10px] font-black uppercase tracking-widest rounded-none pointer-events-none whitespace-nowrap shadow-[4px_4px_0px_rgba(0,0,0,0.5)] border border-[#555]"
+        <div className="fixed z-[100] px-3 py-1.5 bg-[#FF3333] text-white text-[10px] font-black uppercase tracking-widest rounded-none pointer-events-none whitespace-nowrap shadow-[4px_4px_0px_rgba(0,0,0,0.5)] border border-[#555]"
           style={{ top: tooltip.top, left: tooltip.left, transform: tooltip.position === "top" ? 'translate(-50%, -100%)' : tooltip.position === "bottom" ? 'translate(-50%, 0)' : 'translateY(-50%)' }}>
           {tooltip.text}
         </div>
@@ -580,16 +576,16 @@ function App() {
           <div className="flex flex-col flex-1 p-4 md:p-6 overflow-y-auto scrollbar-hide">
             <div className={`flex w-full items-center ${isSidebarOpen ? 'justify-between' : 'justify-center flex-col gap-6'} mb-8 pb-6 border-b border-[#333] shrink-0`}>
               <div onMouseEnter={(e) => handleMouseEnter(e, "SYSTEM DASHBOARD")} onMouseLeave={handleMouseLeave} className="flex items-center gap-3 cursor-pointer">
-                <div className="text-[#D31010] font-black text-2xl leading-none tracking-tighter">N.</div>
-                {isSidebarOpen && <h2 className="text-[#D31010] font-black uppercase text-2xl tracking-tighter leading-none mt-1">NEO-Z</h2>}
+                <div className="text-[#FF3333] font-black text-2xl leading-none tracking-tighter">N.</div>
+                {isSidebarOpen && <h2 className="text-[#FF3333] font-black uppercase text-2xl tracking-tighter leading-none mt-1">NEO-Z</h2>}
               </div>
-              <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} onMouseEnter={(e) => handleMouseEnter(e, isSidebarOpen ? "COLLAPSE PANEL" : "EXPAND PANEL")} onMouseLeave={handleMouseLeave} className="text-gray-500 hover:text-white transition-colors">
+              <button aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"} onClick={() => setIsSidebarOpen(!isSidebarOpen)} onMouseEnter={(e) => handleMouseEnter(e, isSidebarOpen ? "COLLAPSE PANEL" : "EXPAND PANEL")} onMouseLeave={handleMouseLeave} className="text-gray-400 hover:text-white transition-colors" title="Toggle Sidebar">
                 <X size={24} strokeWidth={2} className="md:hidden" />
                 <Menu size={24} strokeWidth={2} className="hidden md:block" />
               </button>
             </div>
 
-            <button onClick={() => createNewChat(null)} onMouseEnter={(e) => handleMouseEnter(e, "INITIALIZE NEW TRACK")} onMouseLeave={handleMouseLeave} className={`w-full border border-[#D31010] text-[#D31010] hover:bg-[#D31010] hover:text-white font-black uppercase tracking-widest text-xs ${isSidebarOpen ? 'py-3 flex items-center justify-center gap-2' : 'p-3 flex justify-center'} mb-8 transition-colors shrink-0`}>
+            <button aria-label="Create new track" onClick={() => createNewChat(null)} onMouseEnter={(e) => handleMouseEnter(e, "INITIALIZE NEW TRACK")} onMouseLeave={handleMouseLeave} className={`w-full border border-[#FF3333] text-[#FF3333] hover:bg-[#FF3333] hover:text-white font-black uppercase tracking-widest text-xs ${isSidebarOpen ? 'py-3 flex items-center justify-center gap-2' : 'p-3 flex justify-center'} mb-8 transition-colors shrink-0`} title="New Track">
               <Plus size={isSidebarOpen ? 16 : 20} strokeWidth={3}/> 
               {isSidebarOpen && <span>NEW TRACK</span>}
             </button>
@@ -597,30 +593,30 @@ function App() {
             <div className="w-full flex flex-col items-center md:items-stretch mb-8 shrink-0">
               {isSidebarOpen ? (
                 <div className="flex items-center justify-between mb-4 border-b border-[#333] pb-2">
-                  <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">RECORD LABELS.</p>
-                  <button onClick={() => setIsProjectModalOpen(true)} onMouseEnter={(e) => handleMouseEnter(e, "CREATE LABEL")} onMouseLeave={handleMouseLeave} className="text-gray-500 hover:text-[#D31010]"><Plus size={14} strokeWidth={3}/></button>
+                  <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">RECORD LABELS.</p>
+                  <button aria-label="Create new record label project" onClick={() => setIsProjectModalOpen(true)} onMouseEnter={(e) => handleMouseEnter(e, "CREATE LABEL")} onMouseLeave={handleMouseLeave} className="text-gray-400 hover:text-[#FF3333]" title="Create Label"><Plus size={14} strokeWidth={3}/></button>
                 </div>
               ) : ( <div className="w-full h-px bg-[#333] mb-6" /> )}
               <div className="space-y-1 w-full flex flex-col items-center md:items-stretch">
                 {projects.map(proj => (
                   <div key={proj._id} className="flex flex-col w-full">
-                    <div onClick={() => { setActiveProjectId(activeProjectId === proj._id ? null : proj._id); if (!isSidebarOpen && window.innerWidth >= 768) setIsSidebarOpen(true); }} onMouseEnter={(e) => handleMouseEnter(e, `OPEN: ${proj.name}`)} onMouseLeave={handleMouseLeave} className={`flex items-center ${isSidebarOpen ? 'gap-3 px-2 py-2 justify-start' : 'justify-center p-3 mx-auto'} w-full cursor-pointer transition-colors ${activeProjectId === proj._id ? "bg-[#111] text-[#D31010] border-l-2 border-[#D31010]" : "text-gray-500 hover:bg-[#111] hover:text-white border-l-2 border-transparent"}`}>
+                    <div onClick={() => { setActiveProjectId(activeProjectId === proj._id ? null : proj._id); if (!isSidebarOpen && window.innerWidth >= 768) setIsSidebarOpen(true); }} onMouseEnter={(e) => handleMouseEnter(e, `OPEN: ${proj.name}`)} onMouseLeave={handleMouseLeave} className={`flex items-center ${isSidebarOpen ? 'gap-3 px-2 py-2 justify-start' : 'justify-center p-3 mx-auto'} w-full cursor-pointer transition-colors ${activeProjectId === proj._id ? "bg-[#111] text-[#FF3333] border-l-2 border-[#FF3333]" : "text-gray-400 hover:bg-[#111] hover:text-white border-l-2 border-transparent"}`}>
                       {activeProjectId === proj._id ? <FolderOpen size={16} strokeWidth={2} className="shrink-0" /> : <Folder size={16} strokeWidth={2} className="shrink-0" />}
                       {isSidebarOpen && <span className="font-bold text-sm tracking-wide truncate flex-1 uppercase">{proj.name}</span>}
-                      {isSidebarOpen && <ChevronRight size={14} strokeWidth={2.5} className={`transition-transform shrink-0 ${activeProjectId === proj._id ? "rotate-90 text-[#D31010]" : ""}`} />}
+                      {isSidebarOpen && <ChevronRight size={14} strokeWidth={2.5} className={`transition-transform shrink-0 ${activeProjectId === proj._id ? "rotate-90 text-[#FF3333]" : ""}`} />}
                     </div>
                     {isSidebarOpen && activeProjectId === proj._id && (
                       <div className="ml-2 border-l border-[#333] pl-3 mt-1 space-y-1 py-2 w-full">
                         {projectChats.filter(c => c.projectId === proj._id).map(chat => (
-                          <div key={chat._id} onClick={() => selectChatMobileFriendly(chat._id)} className={`group flex items-center justify-between text-xs px-2 py-2 cursor-pointer transition-colors ${activeChatId === chat._id ? "text-white bg-[#D31010]/10 font-bold" : "text-gray-500 hover:text-white hover:bg-[#111] font-medium"}`}>
+                          <div key={chat._id} onClick={() => selectChatMobileFriendly(chat._id)} className={`group flex items-center justify-between text-xs px-2 py-2 cursor-pointer transition-colors ${activeChatId === chat._id ? "text-white bg-[#FF3333]/10 font-bold" : "text-gray-400 hover:text-white hover:bg-[#111] font-medium"}`}>
                             <span className="truncate pr-2 uppercase">{chat.title}</span>
                             <div className="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0">
-                               <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} onMouseEnter={(e) => handleMouseEnter(e, "PUBLISH")} onMouseLeave={handleMouseLeave} className="hover:text-white"><Share2 size={12}/></button>
-                               <button onClick={(e) => deleteChat(e, chat._id)} onMouseEnter={(e) => handleMouseEnter(e, "DELETE")} onMouseLeave={handleMouseLeave} className="hover:text-[#D31010]"><Trash2 size={12}/></button>
+                               <button aria-label={`Share track ${chat.title}`} onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} onMouseEnter={(e) => handleMouseEnter(e, "PUBLISH")} onMouseLeave={handleMouseLeave} className="hover:text-white" title="Publish"><Share2 size={12}/></button>
+                               <button aria-label={`Delete track ${chat.title}`} onClick={(e) => deleteChat(e, chat._id)} onMouseEnter={(e) => handleMouseEnter(e, "DELETE")} onMouseLeave={handleMouseLeave} className="hover:text-[#FF3333]" title="Delete"><Trash2 size={12}/></button>
                             </div>
                           </div>
                         ))}
-                        <button onClick={() => createNewChat(proj._id)} className="text-[10px] font-black tracking-widest text-[#D31010] px-2 py-2 hover:bg-[#111] w-full text-left transition-colors mt-2 uppercase">+ ADD TRACK</button>
+                        <button aria-label={`Add track to ${proj.name}`} onClick={() => createNewChat(proj._id)} className="text-[10px] font-black tracking-widest text-[#FF3333] px-2 py-2 hover:bg-[#111] w-full text-left transition-colors mt-2 uppercase">+ ADD TRACK</button>
                       </div>
                     )}
                   </div>
@@ -631,20 +627,20 @@ function App() {
             <div className="w-full flex flex-col items-center md:items-stretch shrink-0">
               {isSidebarOpen ? (
                  <div className="flex items-center justify-between mb-4 border-b border-[#333] pb-2">
-                   <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">SINGLES.</p>
+                   <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">SINGLES.</p>
                  </div>
               ) : ( <div className="w-full h-px bg-[#333] mb-6" /> )}
               <div className="space-y-1 w-full flex flex-col items-center md:items-stretch">
                 {standaloneChats.map(chat => (
-                  <div key={chat._id} onClick={() => selectChatMobileFriendly(chat._id)} onMouseEnter={(e) => handleMouseEnter(e, chat.title)} onMouseLeave={handleMouseLeave} className={`group flex items-center ${isSidebarOpen ? 'justify-between px-2 py-2.5' : 'justify-center p-3 mx-auto'} w-full cursor-pointer transition-colors border-l-2 ${activeChatId === chat._id ? "bg-[#111] border-[#D31010] text-white" : "border-transparent text-gray-500 hover:text-white hover:bg-[#111]"}`}>
+                  <div key={chat._id} onClick={() => selectChatMobileFriendly(chat._id)} onMouseEnter={(e) => handleMouseEnter(e, chat.title)} onMouseLeave={handleMouseLeave} className={`group flex items-center ${isSidebarOpen ? 'justify-between px-2 py-2.5' : 'justify-center p-3 mx-auto'} w-full cursor-pointer transition-colors border-l-2 ${activeChatId === chat._id ? "bg-[#111] border-[#FF3333] text-white" : "border-transparent text-gray-400 hover:text-white hover:bg-[#111]"}`}>
                     <div className={`flex items-center ${isSidebarOpen ? 'gap-3 truncate' : 'justify-center'} w-full`}>
-                      <FileText size={16} strokeWidth={2} className={`shrink-0 ${activeChatId === chat._id ? "text-[#D31010]" : ""}`} />
+                      <FileText size={16} strokeWidth={2} className={`shrink-0 ${activeChatId === chat._id ? "text-[#FF3333]" : ""}`} />
                       {isSidebarOpen && <span className="truncate font-bold text-sm tracking-wide uppercase">{chat.title}</span>}
                     </div>
                     {isSidebarOpen && (
                       <div className={`flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0`}>
-                        <button onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} onMouseEnter={(e) => handleMouseEnter(e, "PUBLISH")} onMouseLeave={handleMouseLeave} className="hover:text-white"><Share2 size={14} strokeWidth={2}/></button>
-                        <button onClick={(e) => deleteChat(e, chat._id)} onMouseEnter={(e) => handleMouseEnter(e, "DELETE")} onMouseLeave={handleMouseLeave} className="hover:text-[#D31010]"><Trash2 size={14} strokeWidth={2}/></button>
+                        <button aria-label={`Share track ${chat.title}`} onClick={(e) => { e.stopPropagation(); openShareModal(chat._id); }} onMouseEnter={(e) => handleMouseEnter(e, "PUBLISH")} onMouseLeave={handleMouseLeave} className="hover:text-white" title="Publish"><Share2 size={14} strokeWidth={2}/></button>
+                        <button aria-label={`Delete track ${chat.title}`} onClick={(e) => deleteChat(e, chat._id)} onMouseEnter={(e) => handleMouseEnter(e, "DELETE")} onMouseLeave={handleMouseLeave} className="hover:text-[#FF3333]" title="Delete"><Trash2 size={14} strokeWidth={2}/></button>
                       </div>
                     )}
                   </div>
@@ -657,17 +653,19 @@ function App() {
           <div className="w-full bg-[#0A0A0A] p-4 md:p-6 shrink-0 mt-auto">
             {isSidebarOpen && (
               <div className="w-full mb-6 flex flex-col gap-2">
-                <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest px-2">VOICE PROTOCOL.</p>
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest px-2">VOICE PROTOCOL.</p>
                 <div className="flex gap-2 px-2">
                   <button
+                    aria-label="Set narrator voice to female"
                     onClick={() => setVoiceType('female')}
-                    className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${voiceType === 'female' ? 'bg-[#D31010] text-white' : 'bg-[#111] text-gray-500 border border-[#333] hover:text-white'}`}
+                    className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${voiceType === 'female' ? 'bg-[#FF3333] text-white' : 'bg-[#111] text-gray-400 border border-[#333] hover:text-white'}`}
                   >
                     FEMALE
                   </button>
                   <button
+                    aria-label="Set narrator voice to male"
                     onClick={() => setVoiceType('male')}
-                    className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${voiceType === 'male' ? 'bg-[#D31010] text-white' : 'bg-[#111] text-gray-500 border border-[#333] hover:text-white'}`}
+                    className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${voiceType === 'male' ? 'bg-[#FF3333] text-white' : 'bg-[#111] text-gray-400 border border-[#333] hover:text-white'}`}
                   >
                     MALE
                   </button>
@@ -676,16 +674,16 @@ function App() {
             )}
 
             <div className={`w-full border-t border-[#333] pt-5 flex ${isSidebarOpen ? 'items-center gap-4' : 'flex-col items-center gap-4'}`}>
-              <div onMouseEnter={(e) => handleMouseEnter(e, "IDENTITY")} onMouseLeave={handleMouseLeave} className="w-10 h-10 bg-[#D31010] flex items-center justify-center text-white font-black text-sm uppercase shrink-0 cursor-pointer">
+              <div onMouseEnter={(e) => handleMouseEnter(e, "IDENTITY")} onMouseLeave={handleMouseLeave} className="w-10 h-10 bg-[#FF3333] flex items-center justify-center text-white font-black text-sm uppercase shrink-0 cursor-pointer">
                 {user?.name?.charAt(0) || "Z"}
               </div>
               {isSidebarOpen && (
                 <div className="flex flex-col flex-1 min-w-0">
                   <span className="text-white text-xs font-black tracking-widest truncate uppercase">{user?.name || "QAZI ZAID"}</span>
-                  <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mt-0.5">{user?.email || "PRO TIER"}</span>
+                  <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mt-0.5">{user?.email || "PRO TIER"}</span>
                 </div>
               )}
-              <button onClick={handleLogout} onMouseEnter={(e) => handleMouseEnter(e, "TERMINATE CONNECTION")} onMouseLeave={handleMouseLeave} className="text-gray-500 hover:text-[#D31010] transition-colors cursor-pointer" title="Log Out">
+              <button aria-label="Log out" onClick={handleLogout} onMouseEnter={(e) => handleMouseEnter(e, "TERMINATE CONNECTION")} onMouseLeave={handleMouseLeave} className="text-gray-400 hover:text-[#FF3333] transition-colors cursor-pointer" title="Log Out">
                 <LogOut size={18} strokeWidth={2} />
               </button>
             </div>
@@ -697,24 +695,24 @@ function App() {
         <div className="h-16 md:h-24 flex items-center justify-between px-6 md:px-12 shrink-0 border-b border-[#333] bg-[#0A0A0A]">
           <div className="flex items-center gap-4 text-white max-w-[70%]">
             {!isSharedView && !isSidebarOpen && (
-              <button onClick={() => setIsSidebarOpen(true)} className="text-gray-500 hover:text-white md:hidden">
+              <button aria-label="Open sidebar" onClick={() => setIsSidebarOpen(true)} className="text-gray-400 hover:text-white md:hidden" title="Open Sidebar">
                 <Menu size={24} strokeWidth={2} />
               </button>
             )}
-            {isSharedView && <span className="bg-[#D31010] text-white px-2 py-1 text-[10px] font-black uppercase tracking-widest flex items-center gap-1"><Star size={12} strokeWidth={3}/> SHARED</span>}
+            {isSharedView && <span className="bg-[#FF3333] text-white px-2 py-1 text-[10px] font-black uppercase tracking-widest flex items-center gap-1"><Star size={12} strokeWidth={3}/> SHARED</span>}
             <div className="flex flex-col">
-               <span className="text-[10px] text-[#D31010] font-black uppercase tracking-widest mb-0.5">CURRENT TRACK.</span>
+               <span className="text-[10px] text-[#FF3333] font-black uppercase tracking-widest mb-0.5">CURRENT TRACK.</span>
                <span className="text-sm md:text-lg font-black text-white uppercase tracking-wider truncate">{activeChat?.title || "UNTITLED"}</span>
             </div>
           </div>
           
           <div className="flex items-center gap-6 shrink-0 hidden md:flex">
              <div className="flex flex-col text-right">
-                <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-0.5">DATE.</span>
+                <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">DATE.</span>
                 <span className="text-sm font-black text-white uppercase tracking-wider">{dateString}</span>
              </div>
              {!isSharedView && (
-               <button onClick={() => openShareModal(activeChat?._id)} onMouseEnter={(e) => handleMouseEnter(e, "BROADCAST TO NETWORK", "bottom")} onMouseLeave={handleMouseLeave} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#D31010] border border-[#D31010] px-4 py-2 hover:bg-[#D31010] hover:text-white transition-all ml-4">
+               <button aria-label="Publish and share this track" onClick={() => openShareModal(activeChat?._id)} onMouseEnter={(e) => handleMouseEnter(e, "BROADCAST TO NETWORK", "bottom")} onMouseLeave={handleMouseLeave} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#FF3333] border border-[#FF3333] px-4 py-2 hover:bg-[#FF3333] hover:text-white transition-all ml-4">
                  <Share size={14} strokeWidth={2.5} /> <span>PUBLISH</span>
                </button>
              )}
@@ -724,24 +722,24 @@ function App() {
         <div className="flex-1 overflow-y-auto scrollbar-hide relative px-4 md:px-12">
           {(!activeChat || activeChat.messages.length === 0) ? (
             <div className="h-full flex flex-col items-start justify-center p-4 max-w-4xl mx-auto w-full mt-[-5vh]">
-               <div className="absolute top-10 right-10 text-[#D31010] font-black text-2xl hidden md:block">X X X</div>
+               <div className="absolute top-10 right-10 text-[#FF3333] font-black text-2xl hidden md:block">X X X</div>
                <div className="flex mb-8">
                   <div className="flex flex-col text-white/10 font-black leading-none mr-6 text-2xl">
                      <span>+</span><span>+</span><span>+</span><span>+</span>
                   </div>
                   <div>
                      <h1 className="text-6xl md:text-8xl lg:text-9xl font-black uppercase leading-[0.85] tracking-tighter text-white">
-                       THE<br/>NEO-Z<br/><span className="text-[#D31010]">CHAIN.</span>
+                       THE<br/>NEO-Z<br/><span className="text-[#FF3333]">CHAIN.</span>
                      </h1>
                   </div>
                </div>
-               <div className="border-l-4 border-[#D31010] pl-6 mt-4 max-w-xl">
+               <div className="border-l-4 border-[#FF3333] pl-6 mt-4 max-w-xl">
                   <p className="text-sm md:text-base text-gray-400 font-medium uppercase tracking-widest leading-relaxed">
-                     <span className="text-[#D31010] font-black">All responses generated by</span><br/>
+                     <span className="text-[#FF3333] font-black">All responses generated by</span><br/>
                      the advanced Gemini Neural Engine. Enter your prompt below to initiate the sequence.
                   </p>
                </div>
-               <div className="h-6 w-full max-w-2xl mt-12 opacity-50" style={{backgroundImage: 'repeating-linear-gradient(45deg, #D31010, #D31010 4px, transparent 4px, transparent 12px)'}}></div>
+               <div className="h-6 w-full max-w-2xl mt-12 opacity-50" style={{backgroundImage: 'repeating-linear-gradient(45deg, #FF3333, #FF3333 4px, transparent 4px, transparent 12px)'}}></div>
             </div>
           ) : (
             <div className="py-8 md:py-16 space-y-10 md:space-y-16 max-w-5xl mx-auto w-full">
@@ -752,52 +750,52 @@ function App() {
                  return (
                  <div key={i} className={`flex flex-col ${c.role === "user" ? "items-end" : "items-start"} w-full`}>
                    <div className={`flex items-start gap-4 md:gap-6 max-w-[95%] md:max-w-[85%] ${c.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                      <div className={`w-10 h-10 flex-shrink-0 flex items-center justify-center font-black uppercase text-sm mt-1 ${c.role === 'user' ? 'bg-[#D31010] text-white' : 'border border-[#555] text-gray-300'}`}>
+                      <div className={`w-10 h-10 flex-shrink-0 flex items-center justify-center font-black uppercase text-sm mt-1 ${c.role === 'user' ? 'bg-[#FF3333] text-white' : 'border border-[#555] text-gray-300'}`}>
                         {c.role === 'user' ? (user?.name?.charAt(0) || 'U') : <Bot size={20} strokeWidth={2} />}
                       </div>
-                      <div className={`text-sm md:text-base leading-relaxed min-w-0 ${c.role === 'user' ? 'bg-[#D31010] text-white p-5 md:p-6' : 'border border-[#333] bg-[#0F0F0F] text-gray-300 p-5 md:p-8'}`}>
+                      <div className={`text-sm md:text-base leading-relaxed min-w-0 ${c.role === 'user' ? 'bg-[#FF3333] text-white p-5 md:p-6' : 'border border-[#333] bg-[#0F0F0F] text-gray-300 p-5 md:p-8'}`}>
                         <ReactMarkdown 
                            remarkPlugins={[remarkGfm]} 
                            components={{
                              p: ({node, ...props}) => <p className="mb-5 last:mb-0 tracking-wide inline-block" {...props} />,
                              strong: ({node, ...props}) => <strong className={`font-black uppercase tracking-wider ${c.role==='user'?'text-black':'text-white'}`} {...props} />,
                              h1: ({node, ...props}) => <h1 className="text-3xl md:text-4xl font-black uppercase mb-6 mt-8 tracking-tighter text-white border-b border-[#333] pb-2" {...props} />,
-                             h2: ({node, ...props}) => <h2 className="text-2xl md:text-3xl font-black uppercase mb-4 mt-6 tracking-tight text-[#D31010]" {...props} />,
+                             h2: ({node, ...props}) => <h2 className="text-2xl md:text-3xl font-black uppercase mb-4 mt-6 tracking-tight text-[#FF3333]" {...props} />,
                              h3: ({node, ...props}) => <h3 className="text-xl font-bold uppercase mb-3 mt-5 text-white" {...props} />,
-                             ul: ({node, ...props}) => <ul className="list-square pl-6 mb-5 space-y-3 marker:text-[#D31010]" {...props} />,
+                             ul: ({node, ...props}) => <ul className="list-square pl-6 mb-5 space-y-3 marker:text-[#FF3333]" {...props} />,
                              ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-5 space-y-3 font-bold" {...props} />,
                              li: ({node, ...props}) => <li className="" {...props} />,
-                             blockquote: ({node, ...props}) => <blockquote className={`border-l-4 pl-5 py-1 font-bold uppercase italic my-6 ${c.role==='user'?'border-black text-black':'border-[#D31010] text-gray-400'}`} {...props} />,
+                             blockquote: ({node, ...props}) => <blockquote className={`border-l-4 pl-5 py-1 font-bold uppercase italic my-6 ${c.role==='user'?'border-black text-black':'border-[#FF3333] text-gray-400'}`} {...props} />,
                              code: ({node, inline, children, ...props}) => !inline ? (
                               <div className="w-full bg-[#050505] border border-[#333] my-8 relative">
-                                <div className="absolute -top-3 -right-3 text-[#D31010] font-black text-sm">X X</div>
+                                <div className="absolute -top-3 -right-3 text-[#FF3333] font-black text-sm">X X</div>
                                 <div className="bg-[#111] px-5 py-3 border-b border-[#333]">
-                                  <span className="text-[10px] text-[#D31010] font-black uppercase tracking-widest">SYSTEM_CODE.EXE</span>
+                                  <span className="text-[10px] text-[#FF3333] font-black uppercase tracking-widest">SYSTEM_CODE.EXE</span>
                                 </div>
                                 <pre className="p-6 overflow-x-auto text-[#ccc] font-mono text-sm leading-loose max-h-96">{children}</pre>
                               </div>
-                             ) : <code className={`px-1.5 py-0.5 font-bold font-mono text-sm uppercase tracking-wider ${c.role==='user'?'bg-black text-[#D31010]':'text-[#D31010]'}`} {...props}>{children}</code>
+                             ) : <code className={`px-1.5 py-0.5 font-bold font-mono text-sm uppercase tracking-wider ${c.role==='user'?'bg-black text-[#FF3333]':'text-[#FF3333]'}`} {...props}>{children}</code>
                            }}
                         >
                           {renderText}
                         </ReactMarkdown>
 
                         {/* ✅ ACTION BUTTONS (COPY / SPEAK) */}
-                        <div className={`flex items-center gap-4 mt-4 pt-3 border-t ${c.role === 'user' ? 'border-white/20 justify-end text-white/70' : 'border-[#333] justify-start text-gray-500'}`}>
-                          <button onClick={() => copyToClipboard(c.text)} className="hover:text-white transition-colors" title="Copy Text">
+                        <div className={`flex items-center gap-4 mt-4 pt-3 border-t ${c.role === 'user' ? 'border-white/20 justify-end text-white/70' : 'border-[#333] justify-start text-gray-400'}`}>
+                          <button aria-label="Copy text to clipboard" onClick={() => copyToClipboard(c.text)} className="hover:text-white transition-colors" title="Copy Text">
                             <Copy size={16} strokeWidth={2.5} />
                           </button>
-                          <button onClick={() => speakText(renderText)} className="hover:text-[#D31010] transition-colors" title="Read Aloud">
+                          <button aria-label="Read text aloud" onClick={() => speakText(renderText)} className="hover:text-[#FF3333] transition-colors" title="Read Aloud">
                             <Volume2 size={16} strokeWidth={2.5} />
                           </button>
-                          <button onClick={stopSpeaking} className="hover:text-[#D31010] transition-colors" title="Stop Audio">
+                          <button aria-label="Stop reading aloud" onClick={stopSpeaking} className="hover:text-[#FF3333] transition-colors" title="Stop Audio">
                             <Square size={16} strokeWidth={2.5} />
                           </button>
                         </div>
 
                         {/* Cursor blink effect for streaming chunk */}
                         {isTyping && i === activeChat.messages.length - 1 && c.role === 'bot' && (
-                           <span className="inline-block w-2 h-4 bg-[#D31010] ml-1 animate-pulse align-middle"></span>
+                           <span className="inline-block w-2 h-4 bg-[#FF3333] ml-1 animate-pulse align-middle"></span>
                         )}
                       </div>
                    </div>
@@ -810,7 +808,7 @@ function App() {
                       <Bot size={20} strokeWidth={2} />
                    </div>
                    <div className="border border-[#333] bg-[#0F0F0F] p-6">
-                     <div className="text-[#D31010] font-black uppercase tracking-widest text-xs animate-pulse flex items-center gap-3">
+                     <div className="text-[#FF3333] font-black uppercase tracking-widest text-xs animate-pulse flex items-center gap-3">
                        <span>TRANSMITTING</span>
                        <span className="text-white text-lg leading-none">+ + +</span>
                      </div>
@@ -829,18 +827,18 @@ function App() {
             {showAgentMenu && (
               <div className="absolute bottom-[calc(100%+16px)] left-0 w-80 bg-[#111] border border-[#333] shadow-2xl z-50">
                 <div className="px-5 py-4 border-b border-[#333] flex justify-between items-center bg-[#0A0A0A]">
-                  <span className="text-[10px] font-black text-[#D31010] uppercase tracking-widest">OVERRIDE PROTOCOL</span>
+                  <span className="text-[10px] font-black text-[#FF3333] uppercase tracking-widest">OVERRIDE PROTOCOL</span>
                   <span className="text-gray-600 text-xs font-black">X X</span>
                 </div>
                 <div className="max-h-64 overflow-y-auto">
                    {EXPERT_AGENTS.filter(a => a.name.toLowerCase().includes(agentSearch)).map(agent => (
-                     <div key={agent.id} onClick={() => handleSelectAgent(agent.name)} className="flex items-center gap-5 px-5 py-4 hover:bg-[#D31010] cursor-pointer transition-colors group border-b border-[#222] last:border-0">
-                       <div className={`p-0 text-gray-500 group-hover:text-white transition-colors`}>
+                     <div key={agent.id} onClick={() => handleSelectAgent(agent.name)} className="flex items-center gap-5 px-5 py-4 hover:bg-[#FF3333] cursor-pointer transition-colors group border-b border-[#222] last:border-0">
+                       <div className={`p-0 text-gray-400 group-hover:text-white transition-colors`}>
                           <agent.icon size={20} strokeWidth={2}/>
                        </div>
                        <div className="flex flex-col">
                           <span className="text-sm font-black text-white uppercase tracking-wider">{agent.name}</span>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest group-hover:text-white/70">{agent.desc}</span>
+                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest group-hover:text-white/70">{agent.desc}</span>
                        </div>
                      </div>
                    ))}
@@ -850,13 +848,13 @@ function App() {
 
             <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide py-2">
                {hardwarePort && !isSharedView && (
-                 <div className="relative shrink-0 border border-[#D31010] bg-[#111] px-5 py-3 flex items-center gap-4">
-                   <Usb size={18} className="text-[#D31010]" strokeWidth={2} />
+                 <div className="relative shrink-0 border border-[#FF3333] bg-[#111] px-5 py-3 flex items-center gap-4">
+                   <Usb size={18} className="text-[#FF3333]" strokeWidth={2} />
                    <div className="flex flex-col">
-                     <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">PORT OPEN</span>
+                     <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">PORT OPEN</span>
                      <span className="text-xs text-white font-black uppercase tracking-wider">HARDWARE LINKED</span>
                    </div>
-                   <button onClick={disconnectHardware} onMouseEnter={(e) => handleMouseEnter(e, "SEVER LINK", "top")} onMouseLeave={handleMouseLeave} className="ml-4 bg-[#D31010] text-white p-1.5 hover:bg-white hover:text-black transition-colors">
+                   <button aria-label="Disconnect hardware" onClick={disconnectHardware} onMouseEnter={(e) => handleMouseEnter(e, "SEVER LINK", "top")} onMouseLeave={handleMouseLeave} className="ml-4 bg-[#FF3333] text-white p-1.5 hover:bg-white hover:text-black transition-colors" title="Disconnect">
                      <X size={14} strokeWidth={3} />
                    </button>
                  </div>
@@ -866,19 +864,19 @@ function App() {
                     {imagePreview && (
                       <div className="relative shrink-0 border border-[#333] bg-[#111] p-1">
                         <img src={imagePreview} alt="Preview" className="h-14 w-14 object-cover grayscale" />
-                        <button type="button" onClick={() => { setImagePreview(null); setImageBase64(null); }} onMouseEnter={(e) => handleMouseEnter(e, "REMOVE VISUAL", "top")} onMouseLeave={handleMouseLeave} className="absolute -top-3 -right-3 bg-[#D31010] text-white p-1.5 hover:bg-white hover:text-black transition-colors">
+                        <button aria-label="Remove visual attachment" type="button" onClick={() => { setImagePreview(null); setImageBase64(null); }} onMouseEnter={(e) => handleMouseEnter(e, "REMOVE VISUAL", "top")} onMouseLeave={handleMouseLeave} className="absolute -top-3 -right-3 bg-[#FF3333] text-white p-1.5 hover:bg-white hover:text-black transition-colors" title="Remove Image">
                           <X size={12} strokeWidth={3} />
                         </button>
                       </div>
                     )}
                     {csvFile && (
                       <div className="relative shrink-0 bg-[#111] border border-[#333] px-5 py-4 flex items-center gap-4">
-                        <FileSpreadsheet size={20} className="text-[#D31010]" strokeWidth={2}/>
+                        <FileSpreadsheet size={20} className="text-[#FF3333]" strokeWidth={2}/>
                         <div className="flex flex-col">
-                           <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">DATA ATTACHED</span>
+                           <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">DATA ATTACHED</span>
                            <span className="text-xs text-white max-w-[150px] truncate font-black uppercase tracking-wider">{csvFile.name}</span>
                         </div>
-                        <button type="button" onClick={() => setCsvFile(null)} onMouseEnter={(e) => handleMouseEnter(e, "REMOVE DATA", "top")} onMouseLeave={handleMouseLeave} className="absolute -top-3 -right-3 bg-[#D31010] text-white p-1.5 hover:bg-white hover:text-black transition-colors">
+                        <button aria-label="Remove data attachment" type="button" onClick={() => setCsvFile(null)} onMouseEnter={(e) => handleMouseEnter(e, "REMOVE DATA", "top")} onMouseLeave={handleMouseLeave} className="absolute -top-3 -right-3 bg-[#FF3333] text-white p-1.5 hover:bg-white hover:text-black transition-colors" title="Remove File">
                           <X size={12} strokeWidth={3} />
                         </button>
                       </div>
@@ -889,33 +887,34 @@ function App() {
 
             {isSharedView ? (
               <div className="border border-[#333] bg-[#111] p-5 flex items-center justify-between">
-                 <p className="text-[#D31010] font-black uppercase tracking-widest text-xs">READ-ONLY ARCHIVE.</p>
-                 <button onClick={() => window.location.href = "/"} className="bg-white text-black font-black px-8 py-3 uppercase tracking-widest text-xs hover:bg-[#D31010] hover:text-white transition-colors">
+                 <p className="text-[#FF3333] font-black uppercase tracking-widest text-xs">READ-ONLY ARCHIVE.</p>
+                 <button aria-label="Initialize a new track" onClick={() => window.location.href = "/"} className="bg-white text-black font-black px-8 py-3 uppercase tracking-widest text-xs hover:bg-[#FF3333] hover:text-white transition-colors" title="Initialize New">
                     INITIALIZE NEW
                  </button>
               </div>
             ) : (
               <form onSubmit={sendMessage} className="bg-[#0A0A0A] border border-[#444] p-1.5 flex items-center focus-within:border-white transition-colors relative">
                 
-                <button type="button" onClick={toggleRecording} onMouseEnter={(e) => handleMouseEnter(e, isRecording ? "STOP RECORDING" : "START VOICE INPUT", "top")} onMouseLeave={handleMouseLeave} className={`p-4 transition-colors shrink-0 ${isRecording ? 'text-[#D31010] bg-[#D31010]/20 animate-pulse border border-[#D31010]' : 'text-gray-500 hover:text-white'}`} title="Record Voice">
+                <button aria-label={isRecording ? "Stop recording voice" : "Start recording voice"} type="button" onClick={toggleRecording} onMouseEnter={(e) => handleMouseEnter(e, isRecording ? "STOP RECORDING" : "START VOICE INPUT", "top")} onMouseLeave={handleMouseLeave} className={`p-4 transition-colors shrink-0 ${isRecording ? 'text-[#FF3333] bg-[#FF3333]/20 animate-pulse border border-[#FF3333]' : 'text-gray-400 hover:text-white'}`} title="Record Voice">
                   <Mic size={22} strokeWidth={2} />
                 </button>
                 <div className="w-px h-6 bg-[#333]"></div>
                 
-                <button type="button" onClick={connectHardware} onMouseEnter={(e) => handleMouseEnter(e, "LINK HARDWARE", "top")} onMouseLeave={handleMouseLeave} className={`p-4 transition-colors shrink-0 ${hardwarePort ? 'text-[#D31010]' : 'text-gray-500 hover:text-white'}`}>
+                <button aria-label="Connect to hardware" type="button" onClick={connectHardware} onMouseEnter={(e) => handleMouseEnter(e, "LINK HARDWARE", "top")} onMouseLeave={handleMouseLeave} className={`p-4 transition-colors shrink-0 ${hardwarePort ? 'text-[#FF3333]' : 'text-gray-400 hover:text-white'}`} title="Link Hardware">
                   <Usb size={22} strokeWidth={2} />
                 </button>
                 <div className="w-px h-6 bg-[#333]"></div>
-                <button type="button" onClick={() => csvInputRef.current?.click()} onMouseEnter={(e) => handleMouseEnter(e, "ATTACH DATA FILE", "top")} onMouseLeave={handleMouseLeave} className="p-4 transition-colors text-gray-500 hover:text-white shrink-0">
+                <button aria-label="Attach data file" type="button" onClick={() => csvInputRef.current?.click()} onMouseEnter={(e) => handleMouseEnter(e, "ATTACH DATA FILE", "top")} onMouseLeave={handleMouseLeave} className="p-4 transition-colors text-gray-400 hover:text-white shrink-0" title="Attach CSV">
                   <FileSpreadsheet size={22} strokeWidth={2} />
                 </button>
-                <input type="file" accept=".csv" ref={csvInputRef} onChange={handleCSVUpload} className="hidden" />
-                <button type="button" onClick={() => fileInputRef.current?.click()} onMouseEnter={(e) => handleMouseEnter(e, "ATTACH VISUALS", "top")} onMouseLeave={handleMouseLeave} className="p-4 transition-colors text-gray-500 hover:text-white shrink-0">
+                <input type="file" accept=".csv" aria-label="CSV file input" ref={csvInputRef} onChange={handleCSVUpload} className="hidden" />
+                <button aria-label="Attach visual media" type="button" onClick={() => fileInputRef.current?.click()} onMouseEnter={(e) => handleMouseEnter(e, "ATTACH VISUALS", "top")} onMouseLeave={handleMouseLeave} className="p-4 transition-colors text-gray-400 hover:text-white shrink-0" title="Attach Image">
                   <Paperclip size={22} strokeWidth={2} />
                 </button>
-                <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageUpload} className="hidden" />
+                <input type="file" accept="image/*" aria-label="Image file input" ref={fileInputRef} onChange={handleImageUpload} className="hidden" />
 
                 <input
+                  aria-label="Prompt input field"
                   ref={inputRef}
                   className="flex-1 bg-transparent text-white px-6 py-4 outline-none font-bold placeholder:text-gray-600 placeholder:uppercase placeholder:font-black placeholder:tracking-widest text-sm md:text-base min-w-0"
                   placeholder={activeChat?.projectId ? "COMMAND THE WORKSPACE..." : "TYPE @ FOR PROTOCOL OR ENTER PROMPT..."}
@@ -924,7 +923,7 @@ function App() {
                   disabled={isRecording}
                 />
                 
-                <button type="submit" disabled={(!message.trim() && !imageBase64 && !csvFile) || isRecording} onMouseEnter={(e) => handleMouseEnter(e, "TRANSMIT", "top")} onMouseLeave={handleMouseLeave} className={`px-8 py-4 uppercase font-black tracking-widest text-sm transition-colors shrink-0 ${(message.trim() || imageBase64 || csvFile) ? "bg-[#D31010] text-white hover:bg-white hover:text-black" : "bg-[#111] text-gray-600 border-l border-[#333]"}`}>
+                <button aria-label="Send message" type="submit" disabled={(!message.trim() && !imageBase64 && !csvFile) || isRecording} onMouseEnter={(e) => handleMouseEnter(e, "TRANSMIT", "top")} onMouseLeave={handleMouseLeave} className={`px-8 py-4 uppercase font-black tracking-widest text-sm transition-colors shrink-0 ${(message.trim() || imageBase64 || csvFile) ? "bg-[#FF3333] text-white hover:bg-white hover:text-black" : "bg-[#111] text-gray-600 border-l border-[#333]"}`} title="Send">
                   SEND
                 </button>
               </form>
@@ -936,14 +935,14 @@ function App() {
       {isProjectModalOpen && (
         <div className="absolute inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-[#0A0A0A] border border-[#333] p-10 w-full max-w-md relative">
-            <button onClick={() => setIsProjectModalOpen(false)} className="absolute top-4 right-4 text-[#D31010] font-black text-xl hover:text-white transition-colors">X X</button>
+            <button aria-label="Close dialog" onClick={() => setIsProjectModalOpen(false)} className="absolute top-4 right-4 text-[#FF3333] font-black text-xl hover:text-white transition-colors" title="Close">X X</button>
             <h3 className="text-2xl font-black text-white uppercase mb-8 tracking-tighter">NEW LABEL.</h3>
             <form onSubmit={handleCreateProject}>
-              <label className="text-[10px] text-[#D31010] font-bold uppercase tracking-widest mb-2 block">Designation.</label>
-              <input type="text" placeholder="E.G. PROJECT OMEGA" value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} autoFocus className="w-full bg-[#111] border border-[#333] text-white px-5 py-4 mb-8 outline-none focus:border-[#D31010] transition-colors font-bold uppercase placeholder:text-gray-600"/>
+              <label className="text-[10px] text-[#FF3333] font-bold uppercase tracking-widest mb-2 block">Designation.</label>
+              <input aria-label="New project designation" type="text" placeholder="E.G. PROJECT OMEGA" value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} autoFocus className="w-full bg-[#111] border border-[#333] text-white px-5 py-4 mb-8 outline-none focus:border-[#FF3333] transition-colors font-bold uppercase placeholder:text-gray-600"/>
               <div className="flex justify-end gap-4">
-                <button type="button" onClick={() => setIsProjectModalOpen(false)} className="px-6 py-3 text-gray-500 font-black uppercase hover:text-white transition-colors">ABORT</button>
-                <button type="submit" disabled={!newProjectName.trim()} className="px-8 py-3 bg-[#D31010] text-white font-black uppercase tracking-widest hover:bg-white hover:text-black transition-colors disabled:opacity-50">CREATE</button>
+                <button aria-label="Abort creating label" type="button" onClick={() => setIsProjectModalOpen(false)} className="px-6 py-3 text-gray-400 font-black uppercase hover:text-white transition-colors">ABORT</button>
+                <button aria-label="Create new label" type="submit" disabled={!newProjectName.trim()} className="px-8 py-3 bg-[#FF3333] text-white font-black uppercase tracking-widest hover:bg-white hover:text-black transition-colors disabled:opacity-50">CREATE</button>
               </div>
             </form>
           </div>
@@ -953,24 +952,24 @@ function App() {
       {isShareModalOpen && (
         <div className="absolute inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-[#0A0A0A] border border-[#333] p-10 w-full max-w-md relative">
-            <button onClick={() => setIsShareModalOpen(false)} className="absolute top-5 right-5 text-gray-500 hover:text-white transition-colors">
+            <button aria-label="Close dialog" onClick={() => setIsShareModalOpen(false)} className="absolute top-5 right-5 text-gray-400 hover:text-white transition-colors" title="Close">
               <X size={24} strokeWidth={2} />
             </button>
             <h3 className="text-2xl font-black text-white uppercase mb-2 tracking-tighter">TRANSMIT SIGNAL.</h3>
-            <p className="text-[#D31010] text-[10px] font-black uppercase tracking-widest mb-8">Broadcast this frequency to the network.</p>
+            <p className="text-[#FF3333] text-[10px] font-black uppercase tracking-widest mb-8">Broadcast this frequency to the network.</p>
             
             <div className="flex items-center gap-4 mb-8">
-              <a href={`https://api.whatsapp.com/send?text=LISTEN%20TO%20THIS:%20${encodeURIComponent(shareLink)}`} target="_blank" rel="noopener noreferrer" className="w-16 h-16 bg-[#111] border border-[#333] text-white hover:border-[#25D366] hover:text-[#25D366] flex items-center justify-center transition-colors">
+              <a href={`https://api.whatsapp.com/send?text=LISTEN%20TO%20THIS:%20${encodeURIComponent(shareLink)}`} target="_blank" rel="noopener noreferrer" className="w-16 h-16 bg-[#111] border border-[#333] text-white hover:border-[#25D366] hover:text-[#25D366] flex items-center justify-center transition-colors" aria-label="Share via WhatsApp" title="Share via WhatsApp">
                 <MessageCircle size={28} strokeWidth={2} />
               </a>
-              <a href={`mailto:?subject=NEO-Z%20TRANSMISSION&body=Link:%20${encodeURIComponent(shareLink)}`} className="w-16 h-16 bg-[#111] border border-[#333] text-white hover:border-white hover:text-white flex items-center justify-center transition-colors">
+              <a href={`mailto:?subject=NEO-Z%20TRANSMISSION&body=Link:%20${encodeURIComponent(shareLink)}`} className="w-16 h-16 bg-[#111] border border-[#333] text-white hover:border-white hover:text-white flex items-center justify-center transition-colors" aria-label="Share via Email" title="Share via Email">
                 <Mail size={28} strokeWidth={2} />
               </a>
             </div>
 
             <div className="flex items-center bg-[#111] border border-[#333]">
-              <input type="text" readOnly value={shareLink} className="flex-1 bg-transparent text-gray-400 px-4 py-4 text-sm outline-none font-mono tracking-tighter truncate"/>
-              <button onClick={handleCopyLink} className={`px-6 py-4 font-black uppercase tracking-widest transition-colors flex items-center justify-center shrink-0 border-l border-[#333] ${isCopied ? 'bg-white text-black' : 'bg-[#D31010] text-white hover:bg-white hover:text-black'}`}>
+              <input aria-label="Shareable link" type="text" readOnly value={shareLink} className="flex-1 bg-transparent text-gray-400 px-4 py-4 text-sm outline-none font-mono tracking-tighter truncate"/>
+              <button aria-label={isCopied ? "Link copied" : "Copy link"} onClick={handleCopyLink} className={`px-6 py-4 font-black uppercase tracking-widest transition-colors flex items-center justify-center shrink-0 border-l border-[#333] ${isCopied ? 'bg-white text-black' : 'bg-[#FF3333] text-white hover:bg-white hover:text-black'}`}>
                 {isCopied ? "COPIED" : "COPY"}
               </button>
             </div>
