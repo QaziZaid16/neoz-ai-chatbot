@@ -38,13 +38,21 @@ async def process_voice(audio_file: UploadFile = File(...)):
             audio_data = recognizer.record(source)
             text = recognizer.recognize_google(audio_data)
 
-        # 4. Clean up temp files
-        os.remove(temp_audio_path)
-        os.remove(wav_audio_path)
-
         return {"success": True, "text": text}
 
+    # 🚨 YAHAN HAI ASLI FIX 🚨
+    except sr.UnknownValueError:
+        return {"success": False, "error": "Aawaz samajh nahi aayi bhai. Thoda zor se aur clear bol! 🎤"}
+    
+    except sr.RequestError as e:
+        return {"success": False, "error": f"Google API down hai: {e}"}
+    
     except Exception as e:
-        if os.path.exists(temp_audio_path): os.remove(temp_audio_path)
-        if os.path.exists(wav_audio_path): os.remove(wav_audio_path)
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Server Error: {str(e)}"}
+
+    # 'finally' hamesha run hota hai, chahe error aaye ya na aaye (Memory clean rakhega)
+    finally:
+        if os.path.exists(temp_audio_path):
+            os.remove(temp_audio_path)
+        if os.path.exists(wav_audio_path):
+            os.remove(wav_audio_path)
