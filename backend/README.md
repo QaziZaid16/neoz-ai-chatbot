@@ -14,11 +14,12 @@ NEO-Z is a highly advanced, cinematic AI workspace and chatbot application. Buil
 ## ⚡ Key Features
 
 * **Cinematic Hacker UI:** A completely custom, dark-themed interface built with React & Tailwind CSS.
-* **Lightning-Fast Streaming:** Real-time text generation powered by the Gemini Neural Engine with Server-Sent Events (SSE).
+* **Lightning-Fast Streaming:** Real-time text generation streamed through OpenRouter with Server-Sent Events (SSE).
 * **Hardware Protocol:** Native Web Serial API integration allows NEO-Z to communicate directly with connected hardware (e.g., Arduino/ESP32) via custom `<CMD>` tags.
 * **Data & Vision Processing:** Upload images for visual analysis or attach CSV files for bulk data interpretation.
 * **Dual-Brain Architecture:** 
-  * Node.js handles real-time streams and database operations.
+  * Node.js handles auth, real-time streams, and database operations.
+  * OpenRouter handles text prompts and Gemini handles image prompts.
   * A Dockerized Python Microservice handles heavy audio/data processing (Voice module parked for future upgrades).
 * **Accessibility & UX:** Fully narrated AI responses (Male/Female voice synthesis), one-click clipboard copying, and strict Lighthouse accessibility standards.
 
@@ -35,7 +36,8 @@ NEO-Z is a highly advanced, cinematic AI workspace and chatbot application. Buil
 **Core Backend:**
 * Node.js & Express
 * MongoDB (Data Persistence)
-* Google Generative AI (Gemini Flash)
+* OpenRouter (Gemma 4 31B text model)
+* Google Generative AI (Gemini image/vision)
 
 **Python Microservice:**
 * FastAPI
@@ -51,7 +53,9 @@ NEO-Z is a highly advanced, cinematic AI workspace and chatbot application. Buil
 * Python 3.13+
 * Docker (optional, for local microservice testing)
 * MongoDB URI
+* OpenRouter API Key
 * Gemini API Key
+* JWT Secret
 
 ### 1. Clone the Repository
 \`\`\`bash
@@ -63,8 +67,8 @@ cd neoz-ai-chatbot
 \`\`\`bash
 cd backend
 npm install
-# Create a .env file with PORT, MONGODB_URI, and GEMINI_API_KEY
-npm run dev
+# Create a .env file with MONGO_URI (or MONGODB_URI), OPENROUTER_API_KEY, GEMINI_API_KEY, and JWT_SECRET
+npm start
 \`\`\`
 
 ### 3. Setup Frontend
